@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: admin           # Nom d'utilisateur de la BDD
+      POSTGRES_PASSWORD: admin       # Mot de passe de la BDD
+      POSTGRES_DB: api_starter_db    # Nom de la BDD
+    ports:
+      - "5432:5432"                  # Mappe le port 5432 du conteneur au port local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - api_starter_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  api_starter_network:
+    driver: bridge
