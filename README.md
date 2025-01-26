@@ -3,13 +3,8 @@ Ce projet sert de base pour une api.
 Il contient une implémentation solide de l'architecture REST, des tests unitaires et d'intégration, et une documentation Swagger.
 
 ## TODO
-- [ ] Créer le service d'authentification (inscription et authentification)
-- [ ] Implémenter BCrypt pour le hashage des mots de passe
 - [ ] Créer les tests unitaires et d'intégration pour le service d'authentification
-- [ ] Créer les endpoints pour l'authentification
-- [ ] Créer une collection Postman pour tester les endpoints
 - [ ] Créer une documentation Swagger
-- [ ] Implémenter JWT
 
 ## Prérequis
 - docker

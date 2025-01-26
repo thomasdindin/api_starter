@@ -58,6 +58,8 @@ public class Utilisateur {
     @PrePersist
     protected void onCreate() {
         dateCreation = Instant.now();
+        compteActive = false;
+        compteBloque = false;
     }
 
 }

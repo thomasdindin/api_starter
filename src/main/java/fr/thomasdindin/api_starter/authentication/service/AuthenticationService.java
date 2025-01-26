@@ -3,7 +3,9 @@ package fr.thomasdindin.api_starter.authentication.service;
 import fr.thomasdindin.api_starter.audit.AuditAction;
 import fr.thomasdindin.api_starter.audit.service.AuditLogService;
 import fr.thomasdindin.api_starter.authentication.dto.AuthResponseDTO;
+import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException;
 import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
+import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
 import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
 import fr.thomasdindin.api_starter.authentication.validators.PasswordValidator;
 import fr.thomasdindin.api_starter.authentication.validators.ValidPassword;
@@ -58,40 +60,19 @@ public class AuthenticationService {
     }
 
     public AuthResponseDTO authenticate(String email, String motDePasse, HttpServletRequest request) {
-        // Récupérer l'utilisateur par email
-        Optional<Utilisateur> utilisateurOpt = utilisateurRepository.findByEmail(email);
 
-        if (utilisateurOpt.isEmpty()) {
-            auditLogService.log(AuditAction.FAILED_LOGIN, null, request.getRemoteAddr());
-            throw new AuthenticationException("Utilisateur non trouvé");
-        }
+        Utilisateur utilisateur = searchForEmail(email, request);
 
-        Utilisateur utilisateur = utilisateurOpt.get();
-
-        // Vérifier si le compte est bloqué
+        // Conditions d'accès
         if (Boolean.TRUE.equals(utilisateur.getCompteBloque())) {
             auditLogService.log(AuditAction.BLOCKED_ACCOUNT, utilisateur, request.getRemoteAddr());
-            throw new AuthenticationException("Votre compte est temporairement bloqué suite à des tentatives échouées.");
-        }
-
-        // Vérifier le mot de passe
-        if (!passwordEncoder.matches(motDePasse, utilisateur.getMotDePasse())) {
-            // Incrémenter le compteur de tentatives échouées
-            short tentativeActuelle = utilisateur.getTentativesConnexion() == null ? 0 : utilisateur.getTentativesConnexion();
-            utilisateur.setTentativesConnexion((short) (tentativeActuelle + 1));
-
-            // Bloquer le compte si le nombre de tentatives dépasse le seuil
-            if (utilisateur.getTentativesConnexion() >= maxLoginAttempts) {
-                utilisateur.setCompteBloque(true);
-                utilisateurRepository.save(utilisateur);
-
-                auditLogService.log(AuditAction.BLOCKED_ACCOUNT, utilisateur, request.getRemoteAddr());
-                throw new AuthenticationException("Votre compte a été bloqué suite à trop de tentatives échouées.");
-            }
-
-            utilisateurRepository.save(utilisateur); // Sauvegarder les tentatives échouées
-            auditLogService.log(AuditAction.FAILED_LOGIN, utilisateur, request.getRemoteAddr());
+            throw new AccountBlockedException("Votre compte est temporairement bloqué suite à des tentatives échouées.");
+        } else if (!passwordEncoder.matches(motDePasse, utilisateur.getMotDePasse())) {
+            logginError(request, utilisateur);
             throw new AuthenticationException("Mot de passe incorrect");
+        } else if (!utilisateur.getCompteActive()) {
+            auditLogService.log(AuditAction.FAILED_LOGIN, utilisateur, request.getRemoteAddr());
+            throw new EmailNotVerfiedException("Votre compte n'est pas activé");
         }
 
         // Réinitialiser le compteur de tentatives après un login réussi
@@ -110,6 +91,34 @@ public class AuthenticationService {
                 utilisateur.getEmail(),
                 token
         );
+    }
+
+    private void logginError(HttpServletRequest request, Utilisateur utilisateur) {
+        // Incrémenter le compteur de tentatives échouées
+        short tentativeActuelle = utilisateur.getTentativesConnexion() == null ? 0 : utilisateur.getTentativesConnexion();
+        utilisateur.setTentativesConnexion((short) (tentativeActuelle + 1));
+
+        // Bloquer le compte si le nombre de tentatives dépasse le seuil
+        if (utilisateur.getTentativesConnexion() >= maxLoginAttempts) {
+            utilisateur.setCompteBloque(true);
+            utilisateurRepository.save(utilisateur);
+
+            auditLogService.log(AuditAction.BLOCKED_ACCOUNT, utilisateur, request.getRemoteAddr());
+            throw new AuthenticationException("Votre compte a été bloqué suite à trop de tentatives échouées.");
+        }
+
+        utilisateurRepository.save(utilisateur); // Sauvegarder les tentatives échouées
+        auditLogService.log(AuditAction.FAILED_LOGIN, utilisateur, request.getRemoteAddr());
+    }
+
+    private Utilisateur searchForEmail(String email, HttpServletRequest request) {
+        Optional<Utilisateur> utilisateurOpt = utilisateurRepository.findByEmail(email);
+
+        if (utilisateurOpt.isEmpty()) {
+            auditLogService.log(AuditAction.FAILED_LOGIN, null, request.getRemoteAddr());
+            throw new AuthenticationException("Utilisateur non trouvé");
+        }
+        return utilisateurOpt.get();
     }
 
 }
