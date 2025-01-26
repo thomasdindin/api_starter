@@ -25,9 +25,6 @@ public class Utilisateur {
     @Column(name = "mot_de_passe", nullable = false)
     private String motDePasse;
 
-    @Column(name = "sel", nullable = false)
-    private String sel;
-
     @ColumnDefault("'USER'")
     @Column(name = "role", length = 50)
     private String role;
