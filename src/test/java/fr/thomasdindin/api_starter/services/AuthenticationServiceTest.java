@@ -1,77 +1,174 @@
 package fr.thomasdindin.api_starter.services;
 
+import fr.thomasdindin.api_starter.audit.AuditAction;
+import fr.thomasdindin.api_starter.audit.service.AuditLogService;
+import fr.thomasdindin.api_starter.authentication.dto.AuthResponseDTO;
+import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException;
+import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
+import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
+import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
 import fr.thomasdindin.api_starter.authentication.service.AuthenticationService;
+import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
 import fr.thomasdindin.api_starter.entities.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.mockito.MockitoAnnotations;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
 import java.util.UUID;
 
-@ExtendWith(MockitoExtension.class)
-public class AuthenticationServiceTest {
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class AuthenticationServiceTest {
+
+    @InjectMocks
+    private AuthenticationService authenticationService;
 
     @Mock
     private UtilisateurRepository utilisateurRepository;
 
     @Mock
-    private PasswordEncoder passwordEncoder;
+    private AuditLogService auditLogService;
 
-    @InjectMocks
-    private AuthenticationService authenticationService;
+    @Mock
+    private JwtUtils jwtUtils;
 
-    @Test
-    public void testRegisterUtilisateur_Success() {
-//        UUID utilisateurId = UUID.randomUUID(); // Utilisation de UUID
-//
-//        Utilisateur utilisateur = new Utilisateur();
-//        utilisateur.setId(utilisateurId); // Définir l'ID UUID pour l'utilisateur
-//        utilisateur.setEmail("test@example.com");
-//        utilisateur.setMotDePasse("password123");
-//
-//        Mockito.when(utilisateurRepository.findByEmail("test@example.com"))
-//                .thenReturn(Optional.empty());
-//
-//        Utilisateur savedUtilisateur = new Utilisateur();
-//        savedUtilisateur.setId(utilisateurId); // UUID pour le résultat sauvegardé
-//        savedUtilisateur.setEmail("test@example.com");
-//        savedUtilisateur.setMotDePasse("hashedPassword");
-//
-//        Mockito.when(utilisateurRepository.save(Mockito.any(Utilisateur.class)))
-//                .thenReturn(savedUtilisateur);
-//
-//        Utilisateur result = authenticationService.registerUtilisateur(utilisateur, any(HttpServletRequest.class));
-//
-//        Assertions.assertNotNull(result);
-//        Assertions.assertEquals(utilisateurId, result.getId()); // Validation de l'UUID
-//        Assertions.assertEquals("test@example.com", result.getEmail());
-//        Assertions.assertEquals("hashedPassword", result.getMotDePasse());
-//
-//        Mockito.verify(utilisateurRepository).findByEmail("test@example.com");
-//        Mockito.verify(utilisateurRepository).save(Mockito.any(Utilisateur.class));
+    @Mock
+    private HttpServletRequest httpServletRequest;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        when(httpServletRequest.getRemoteAddr()).thenReturn("127.0.0.1");
     }
 
     @Test
-    public void testRegisterUtilisateur_Failure() {
-//        UUID utilisateurId = UUID.randomUUID();
-//        Utilisateur utilisateur = new Utilisateur();
-//        utilisateur.setId(utilisateurId);
-//        utilisateur.setEmail("test@example.com");
-//        utilisateur.setMotDePasse("password123");
-//
-//        Mockito.when(utilisateurRepository.findByEmail("test@example.com"))
-//                .thenReturn(Optional.of(utilisateur));
-//
-//        Assertions.assertThrows(IllegalArgumentException.class, () -> {
-//            authenticationService.registerUtilisateur(utilisateur);
-//        });
+    void testRegisterUtilisateur_successful() {
+        Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setEmail("test@example.com");
+        utilisateur.setMotDePasse("ValidPassword123!");
+
+        when(utilisateurRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
+        when(utilisateurRepository.save(any(Utilisateur.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Utilisateur savedUtilisateur = authenticationService.registerUtilisateur(utilisateur, httpServletRequest);
+
+        assertNotNull(savedUtilisateur);
+        assertNotNull(savedUtilisateur.getMotDePasse());
+        verify(auditLogService).log(eq(AuditAction.SUCCESSFUL_REGISTRATION), any(Utilisateur.class), eq("127.0.0.1"));
+    }
+
+    @Test
+    void testRegisterUtilisateur_failure_userAlreadyExists() {
+        Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setEmail("test@example.com");
+        utilisateur.setMotDePasse("ValidPassword123!");
+
+        when(utilisateurRepository.findByEmail("test@example.com")).thenReturn(Optional.of(new Utilisateur()));
+
+        AuthenticationException exception = assertThrows(AuthenticationException.class,
+                () -> authenticationService.registerUtilisateur(utilisateur, httpServletRequest));
+
+        assertEquals("Un utilisateur avec cet e-mail existe déjà.", exception.getMessage());
+        verify(auditLogService).log(eq(AuditAction.FAILED_REGISTRATION), any(Utilisateur.class), eq("127.0.0.1"));
+    }
+
+    @Test
+    void testAuthenticate_successful() {
+        Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setId(UUID.randomUUID());
+        utilisateur.setEmail("test@example.com");
+        utilisateur.setMotDePasse(new BCryptPasswordEncoder().encode("ValidPassword123!"));
+        utilisateur.setCompteActive(true);
+        utilisateur.setCompteBloque(false);
+
+        when(utilisateurRepository.findByEmail("test@example.com")).thenReturn(Optional.of(utilisateur));
+        when(jwtUtils.generateToken("test@example.com")).thenReturn("mockJwtToken");
+
+        AuthResponseDTO response = authenticationService.authenticate("test@example.com", "ValidPassword123!", httpServletRequest);
+
+        assertNotNull(response);
+        assertEquals("test@example.com", response.getEmail());
+        assertEquals("mockJwtToken", response.getToken());
+        verify(auditLogService).log(eq(AuditAction.SUCCESSFUL_LOGIN), any(Utilisateur.class), eq("127.0.0.1"));
+    }
+
+    @Test
+    void testAuthenticate_failure_accountBlocked() {
+        Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setEmail("test@example.com");
+        utilisateur.setCompteBloque(true);
+
+        when(utilisateurRepository.findByEmail("test@example.com")).thenReturn(Optional.of(utilisateur));
+
+        AccountBlockedException exception = assertThrows(AccountBlockedException.class,
+                () -> authenticationService.authenticate("test@example.com", "ValidPassword123!", httpServletRequest));
+
+        assertEquals("Votre compte est temporairement bloqué suite à des tentatives échouées.", exception.getMessage());
+        verify(auditLogService).log(eq(AuditAction.BLOCKED_ACCOUNT), any(Utilisateur.class), eq("127.0.0.1"));
+    }
+
+    @Test
+    void testAuthenticate_failure_invalidPassword() {
+        Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setEmail("test@example.com");
+        utilisateur.setMotDePasse(new BCryptPasswordEncoder().encode("CorrectPassword123!"));
+        utilisateur.setCompteActive(true);
+        utilisateur.setCompteBloque(false);
+
+        when(utilisateurRepository.findByEmail("test@example.com")).thenReturn(Optional.of(utilisateur));
+
+        AuthenticationException exception = assertThrows(AuthenticationException.class,
+                () -> authenticationService.authenticate("test@example.com", "WrongPassword123!", httpServletRequest));
+
+        assertEquals("Mot de passe incorrect", exception.getMessage());
+        verify(auditLogService).log(eq(AuditAction.FAILED_LOGIN), any(Utilisateur.class), eq("127.0.0.1"));
+    }
+
+    @Test
+    void testVerifyEmail_successful() {
+        Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setId(UUID.randomUUID());
+        utilisateur.setEmail("test@example.com");
+        utilisateur.setCompteActive(false);
+
+        when(utilisateurRepository.findById(any(UUID.class))).thenReturn(Optional.of(utilisateur));
+        when(utilisateurRepository.save(any(Utilisateur.class))).thenReturn(utilisateur);
+
+        Utilisateur verifiedUtilisateur = authenticationService.verifyEmail(utilisateur.getId(), httpServletRequest);
+
+        assertTrue(verifiedUtilisateur.getCompteActive());
+        verify(auditLogService).log(eq(AuditAction.SUCCESSFUL_EMAIL_VERIFICATION), any(Utilisateur.class), eq("127.0.0.1"));
+    }
+
+    @Test
+    void testVerifyEmail_failure_userNotFound() {
+        when(utilisateurRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+
+        NoMatchException exception = assertThrows(NoMatchException.class,
+                () -> authenticationService.verifyEmail(UUID.randomUUID(), httpServletRequest));
+
+        assertEquals("Utilisateur non trouvé", exception.getMessage());
+        verify(auditLogService).log(eq(AuditAction.FAILED_EMAIL_VERIFICATION), eq(null), eq("127.0.0.1"));
+    }
+
+    @Test
+    void testVerifyEmail_failure_accountAlreadyActive() {
+        Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setCompteActive(true);
+
+        when(utilisateurRepository.findById(any(UUID.class))).thenReturn(Optional.of(utilisateur));
+
+        UnsupportedOperationException exception = assertThrows(UnsupportedOperationException.class,
+                () -> authenticationService.verifyEmail(UUID.randomUUID(), httpServletRequest));
+
+        assertEquals("Votre compte est déjà activé", exception.getMessage());
+        verify(auditLogService).log(eq(AuditAction.FAILED_EMAIL_VERIFICATION), any(Utilisateur.class), eq("127.0.0.1"));
     }
 }
-

@@ -29,8 +29,7 @@ public class AuthenticationService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
 
-    @Value("${security.max-login-attempts}")
-    private short maxLoginAttempts;
+    private final short maxLoginAttempts = 3;
 
 
     public AuthenticationService(@Autowired UtilisateurRepository utilisateurRepository, @Autowired JwtUtils jwtUtils, @Autowired AuditLogService auditLogService) {
