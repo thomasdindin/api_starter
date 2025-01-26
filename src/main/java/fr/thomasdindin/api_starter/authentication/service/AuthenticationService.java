@@ -19,6 +19,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuthenticationService {
@@ -91,6 +92,29 @@ public class AuthenticationService {
                 utilisateur.getEmail(),
                 token
         );
+    }
+
+    public Utilisateur verifyEmail(UUID uuid, HttpServletRequest request) {
+        Optional<Utilisateur> utilisateurOpt = utilisateurRepository.findById(uuid);
+
+        if (utilisateurOpt.isEmpty()) {
+            auditLogService.log(AuditAction.FAILED_EMAIL_VERIFICATION, null, request.getRemoteAddr());
+            throw new NoMatchException("Utilisateur non trouvé");
+        } else if (utilisateurOpt.get().getCompteActive()) {
+            auditLogService.log(AuditAction.FAILED_EMAIL_VERIFICATION, utilisateurOpt.get(), request.getRemoteAddr());
+            throw new UnsupportedOperationException("Votre compte est déjà activé");
+        }
+
+        Utilisateur utilisateur = utilisateurOpt.get();
+        utilisateur.setCompteActive(true);
+        utilisateurRepository.save(utilisateur);
+
+        auditLogService.log(AuditAction.SUCCESSFUL_EMAIL_VERIFICATION, utilisateur, request.getRemoteAddr());
+        return utilisateur;
+    }
+
+    public void logout(HttpServletRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     private void logginError(HttpServletRequest request, Utilisateur utilisateur) {

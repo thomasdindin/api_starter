@@ -12,10 +12,13 @@ import fr.thomasdindin.api_starter.entities.Utilisateur;
 import fr.thomasdindin.api_starter.authentication.service.AuthenticationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.websocket.server.PathParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
@@ -45,11 +48,28 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody Utilisateur utilisateur, HttpServletRequest request) {
+    public ResponseEntity<UUID> register(@Valid @RequestBody Utilisateur utilisateur, HttpServletRequest request) {
         try {
-            authenticationService.registerUtilisateur(utilisateur, request);
-            return ResponseEntity.ok().build();
+            UUID id = authenticationService.registerUtilisateur(utilisateur, request).getId();
+            return ResponseEntity.ok(id);
         } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@PathParam("uuid") UUID uuid, HttpServletRequest request) {
+        try {
+            authenticationService.verifyEmail(uuid, request);
+            return ResponseEntity.ok().build();
+        } catch (NoMatchException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (UnsupportedOperationException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
