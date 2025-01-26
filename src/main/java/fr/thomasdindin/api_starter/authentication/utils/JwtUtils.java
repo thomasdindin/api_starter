@@ -1,7 +1,9 @@
-package fr.thomasdindin.api_starter.utils;
+package fr.thomasdindin.api_starter.authentication.utils;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -10,10 +12,18 @@ import java.util.function.Function;
 
 @Component
 public class JwtUtils {
-    private static final String SECRET_KEY = "your_secret_key_change_this_to_256_bit_key"; // Changez cette clé pour votre application
+    @Value("${security.jwt.secret}")
+    private String SECRET_KEY;
     private static final int JWT_EXPIRATION_MS = 15 * 60 * 1000; // 15 minutes
+    private Key key;
 
-    private final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+    @PostConstruct
+    public void init() {
+        if (SECRET_KEY == null || SECRET_KEY.isEmpty()) {
+            throw new IllegalStateException("SECRET_KEY is not configured properly.");
+        }
+        key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+    }
 
     // Génère un token JWT
     public String generateToken(String subject) {

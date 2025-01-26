@@ -1,5 +1,6 @@
-package fr.thomasdindin.api_starter.entities;
+package fr.thomasdindin.api_starter.audit;
 
+import fr.thomasdindin.api_starter.entities.Utilisateur;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,8 +27,9 @@ public class AuditLog {
     @JoinColumn(name = "utilisateur_id")
     private Utilisateur utilisateur;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "action", nullable = false)
-    private String action;
+    private AuditAction action;
 
     @Column(name = "adresse_ip", length = 50)
     private String adresseIp;

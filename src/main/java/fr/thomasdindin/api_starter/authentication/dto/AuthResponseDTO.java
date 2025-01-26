@@ -1,5 +1,6 @@
-package fr.thomasdindin.api_starter.dto;
+package fr.thomasdindin.api_starter.authentication.dto;
 
+import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -7,6 +8,7 @@ import lombok.Data;
 @AllArgsConstructor
 public class AuthResponseDTO {
     private String id;
+    @Email
     private String email;
     private String token;
 }

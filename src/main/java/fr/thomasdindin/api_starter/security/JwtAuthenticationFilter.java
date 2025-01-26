@@ -1,6 +1,6 @@
 package fr.thomasdindin.api_starter.security;
 
-import fr.thomasdindin.api_starter.utils.JwtUtils;
+import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
