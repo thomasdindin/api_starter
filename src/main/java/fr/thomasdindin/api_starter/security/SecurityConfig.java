@@ -29,7 +29,7 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new CorsConfiguration();
-                    corsConfig.setAllowedOrigins(List.of("*")); // Autoriser tout ou configurer vos domaines spécifiques
+                    corsConfig.setAllowedOriginPatterns(List.of("*")); // Autoriser tout ou configurer vos domaines spécifiques
                     corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     corsConfig.setAllowedHeaders(List.of("Authorization", "Content-Type"));
                     corsConfig.setExposedHeaders(List.of("Authorization"));
