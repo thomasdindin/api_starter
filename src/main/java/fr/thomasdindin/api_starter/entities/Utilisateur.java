@@ -90,9 +90,6 @@ public class Utilisateur {
     @JoinColumn(name = "adresse_id")
     private Adresse adresse;
 
-    @OneToMany(mappedBy = "utilisateur")
-    private Set<AuditLog> auditLogs = new LinkedHashSet<>();
-
     @PrePersist
     protected void onCreate() {
         dateCreation = Instant.now();
