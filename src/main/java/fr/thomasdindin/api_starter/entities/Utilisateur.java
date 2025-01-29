@@ -1,15 +1,17 @@
 package fr.thomasdindin.api_starter.entities;
 
+import fr.thomasdindin.api_starter.audit.AuditLog;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -54,6 +56,42 @@ public class Utilisateur {
     @ColumnDefault("now()")
     @Column(name = "date_creation")
     private Instant dateCreation;
+
+    @Size(max = 50)
+    @NotNull
+    @ColumnDefault("'Inconnu'")
+    @Column(name = "prenom", nullable = false, length = 50)
+    private String prenom;
+
+    @Size(max = 50)
+    @NotNull
+    @ColumnDefault("'Inconnu'")
+    @Column(name = "nom", nullable = false, length = 50)
+    private String nom;
+
+    @Size(max = 15)
+    @Column(name = "telephone", length = 15)
+    private String telephone;
+
+    @Column(name = "date_naissance")
+    private Instant dateNaissance;
+
+    @Size(max = 10)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "genre", length = 10)
+    private GenreUtilisateur genre;
+
+    @Size(max = 255)
+    @Column(name = "photo_profil")
+    private String photoProfil;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "adresse_id")
+    private Adresse adresse;
+
+    @OneToMany(mappedBy = "utilisateur")
+    private Set<AuditLog> auditLogs = new LinkedHashSet<>();
 
     @PrePersist
     protected void onCreate() {

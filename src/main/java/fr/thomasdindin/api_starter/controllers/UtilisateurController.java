@@ -1,7 +1,7 @@
 package fr.thomasdindin.api_starter.controllers;
 
 import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
-import fr.thomasdindin.api_starter.dto.UtilisateurDTO;
+import fr.thomasdindin.api_starter.dto.UtilisateurDto;
 import fr.thomasdindin.api_starter.services.UtilisateurService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +23,7 @@ public class UtilisateurController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UtilisateurDTO> getMe(HttpServletRequest request) {
+    public ResponseEntity<UtilisateurDto> getMe(HttpServletRequest request) {
         try {
             final String authHeader = request.getHeader("Authorization");
             String jwt = authHeader.substring(7);

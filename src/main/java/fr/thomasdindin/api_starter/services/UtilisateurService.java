@@ -1,6 +1,7 @@
 package fr.thomasdindin.api_starter.services;
 
-import fr.thomasdindin.api_starter.dto.UtilisateurDTO;
+import fr.thomasdindin.api_starter.dto.AdresseDto;
+import fr.thomasdindin.api_starter.dto.UtilisateurDto;
 import fr.thomasdindin.api_starter.entities.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,9 +16,19 @@ public class UtilisateurService {
         this.utilisateurRepository = utilisateurRepository;
     }
 
-    public UtilisateurDTO findByEmail(String email) {
+    public UtilisateurDto findByEmail(String email) {
         Utilisateur utilisateur = utilisateurRepository.findByEmail(email).orElseThrow();
-        return new UtilisateurDTO(utilisateur.getId(), utilisateur.getEmail(), utilisateur.getDateCreation());
+        return new UtilisateurDto(
+                utilisateur.getEmail(),
+                utilisateur.getDateCreation(),
+                utilisateur.getPrenom(),
+                utilisateur.getNom(),
+                utilisateur.getTelephone(),
+                utilisateur.getDateNaissance(),
+                utilisateur.getGenre(),
+                utilisateur.getPhotoProfil(),
+                null
+        );
     }
 
 }
