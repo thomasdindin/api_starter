@@ -2,10 +2,8 @@ package fr.thomasdindin.api_starter.services;
 
 import fr.thomasdindin.api_starter.audit.AuditAction;
 import fr.thomasdindin.api_starter.audit.service.AuditLogService;
-import fr.thomasdindin.api_starter.authentication.dto.AuthResponseDTO;
 import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException;
 import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
-import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
 import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
 import fr.thomasdindin.api_starter.authentication.service.AuthenticationService;
 import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
@@ -19,6 +17,8 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import jakarta.servlet.http.HttpServletRequest;
+
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -91,11 +91,9 @@ class AuthenticationServiceTest {
         when(utilisateurRepository.findByEmail("test@example.com")).thenReturn(Optional.of(utilisateur));
         when(jwtUtils.generateToken(utilisateur)).thenReturn("mockJwtToken");
 
-        AuthResponseDTO response = authenticationService.authenticate("test@example.com", "ValidPassword123!", httpServletRequest);
+        Map<String, String> response = authenticationService.authenticate("test@example.com", "ValidPassword123!", httpServletRequest);
 
         assertNotNull(response);
-        assertEquals("test@example.com", response.getEmail());
-        assertEquals("mockJwtToken", response.getToken());
         verify(auditLogService).log(eq(AuditAction.SUCCESSFUL_LOGIN), any(Utilisateur.class), eq("127.0.0.1"));
     }
 

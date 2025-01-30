@@ -1,8 +1,5 @@
 package fr.thomasdindin.api_starter.authentication.controller;
 
-import fr.thomasdindin.api_starter.audit.AuditAction;
-import fr.thomasdindin.api_starter.audit.service.AuditLogService;
-import fr.thomasdindin.api_starter.authentication.dto.AuthResponseDTO;
 import fr.thomasdindin.api_starter.authentication.dto.LoginRequestDTO;
 import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException;
 import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
@@ -18,23 +15,31 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-    private AuthenticationService authenticationService;
+    private final AuthenticationService authenticationService;
 
     public AuthController(@Autowired AuthenticationService authenticationService) {
         this.authenticationService = authenticationService;
     }
 
+    /**
+     * A la connexion, on renvoie un token JWT, ainsi qu'un refresh token.
+     * Le token JWT est valide 15 minutes, et le refresh token 7 jours.
+     * @param loginRequestDTO contiens l'email et le mot de passe
+     * @param request la requête HTTP
+     * @return un objet contenant le token JWT et le refresh token
+     */
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody LoginRequestDTO loginRequestDTO, HttpServletRequest request) {
+    public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginRequestDTO loginRequestDTO, HttpServletRequest request) {
         try {
-            AuthResponseDTO dto = authenticationService.authenticate(loginRequestDTO.getEmail(), loginRequestDTO.getPassword(), request);
-            return ResponseEntity.ok(dto);
+            Map<String, String> tokens = authenticationService.authenticate(loginRequestDTO.getEmail(), loginRequestDTO.getPassword(), request);
+            return ResponseEntity.ok(tokens);
         } catch (AuthenticationException e) {
             // Mot de passe incorrect ou utilisateur non trouvé : 401
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -57,10 +62,16 @@ public class AuthController {
         }
     }
 
-    @GetMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+    @GetMapping("/refresh-token")
+    public ResponseEntity<String> refreshToken(@RequestParam("refreshToken") String refreshToken) {
+        try {
+            String token = authenticationService.refreshToken(refreshToken);
+            return ResponseEntity.ok(token);
+        } catch (NoMatchException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
+
 
     @GetMapping("/verify-email")
     public ResponseEntity<?> verifyEmail(@PathParam("uuid") UUID uuid, HttpServletRequest request) {

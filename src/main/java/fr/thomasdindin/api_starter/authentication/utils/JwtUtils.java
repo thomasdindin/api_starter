@@ -45,6 +45,21 @@ public class JwtUtils {
                 .compact();
     }
 
+    public Map<String, String> generateTokens(Utilisateur utilisateur) {
+        String refreshToken = Jwts.builder()
+                .setSubject(utilisateur.getId().toString())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) // 7 jours
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+
+        Map<String, String> tokens = new HashMap<>();
+        tokens.put("accessToken", generateToken(utilisateur));
+        tokens.put("refreshToken", refreshToken);
+        return tokens;
+    }
+
+
     // Valide un token JWT
     public boolean validateToken(String token) {
         try {

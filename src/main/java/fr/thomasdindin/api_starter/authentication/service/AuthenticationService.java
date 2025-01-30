@@ -2,22 +2,19 @@ package fr.thomasdindin.api_starter.authentication.service;
 
 import fr.thomasdindin.api_starter.audit.AuditAction;
 import fr.thomasdindin.api_starter.audit.service.AuditLogService;
-import fr.thomasdindin.api_starter.authentication.dto.AuthResponseDTO;
 import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException;
 import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
 import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
 import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
-import fr.thomasdindin.api_starter.authentication.validators.PasswordValidator;
-import fr.thomasdindin.api_starter.authentication.validators.ValidPassword;
 import fr.thomasdindin.api_starter.entities.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
 import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,8 +25,6 @@ public class AuthenticationService {
     private final AuditLogService auditLogService;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
-
-    private final short maxLoginAttempts = 3;
 
 
     public AuthenticationService(@Autowired UtilisateurRepository utilisateurRepository, @Autowired JwtUtils jwtUtils, @Autowired AuditLogService auditLogService) {
@@ -59,7 +54,7 @@ public class AuthenticationService {
         return savedUtilisateur;
     }
 
-    public AuthResponseDTO authenticate(String email, String motDePasse, HttpServletRequest request) {
+    public Map<String, String> authenticate(String email, String motDePasse, HttpServletRequest request) {
 
         Utilisateur utilisateur = searchForEmail(email, request);
 
@@ -79,18 +74,11 @@ public class AuthenticationService {
         utilisateur.setTentativesConnexion((short) 0);
         utilisateurRepository.save(utilisateur);
 
-        // Générer un JWT
-        String token = jwtUtils.generateToken(utilisateur);
-
         // Générer le log de connexion réussie
         auditLogService.log(AuditAction.SUCCESSFUL_LOGIN, utilisateur, request.getRemoteAddr());
 
-        // Renvoyer les données sous forme de DTO
-        return new AuthResponseDTO(
-                utilisateur.getId().toString(),
-                utilisateur.getEmail(),
-                token
-        );
+        // Renvoyer les tokens d'authentification
+        return jwtUtils.generateTokens(utilisateur);
     }
 
     public Utilisateur verifyEmail(UUID uuid, HttpServletRequest request) {
@@ -112,16 +100,13 @@ public class AuthenticationService {
         return utilisateur;
     }
 
-    public void logout(HttpServletRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-
     private void logginError(HttpServletRequest request, Utilisateur utilisateur) {
         // Incrémenter le compteur de tentatives échouées
         short tentativeActuelle = utilisateur.getTentativesConnexion() == null ? 0 : utilisateur.getTentativesConnexion();
         utilisateur.setTentativesConnexion((short) (tentativeActuelle + 1));
 
         // Bloquer le compte si le nombre de tentatives dépasse le seuil
+        short maxLoginAttempts = 3;
         if (utilisateur.getTentativesConnexion() >= maxLoginAttempts) {
             utilisateur.setCompteBloque(true);
             utilisateurRepository.save(utilisateur);
@@ -142,6 +127,13 @@ public class AuthenticationService {
             throw new AuthenticationException("Utilisateur non trouvé");
         }
         return utilisateurOpt.get();
+    }
+
+    public String refreshToken(String refreshToken) {
+        String userId = jwtUtils.extractSubject(refreshToken);
+        Utilisateur utilisateur = utilisateurRepository.findById(UUID.fromString(userId)).orElseThrow(() -> new NoMatchException("Utilisateur non trouvé"));
+
+        return jwtUtils.generateToken(utilisateur);
     }
 
 }
