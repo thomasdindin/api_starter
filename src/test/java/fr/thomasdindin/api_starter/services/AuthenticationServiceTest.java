@@ -89,7 +89,7 @@ class AuthenticationServiceTest {
         utilisateur.setCompteBloque(false);
 
         when(utilisateurRepository.findByEmail("test@example.com")).thenReturn(Optional.of(utilisateur));
-        when(jwtUtils.generateToken("test@example.com")).thenReturn("mockJwtToken");
+        when(jwtUtils.generateToken(utilisateur)).thenReturn("mockJwtToken");
 
         AuthResponseDTO response = authenticationService.authenticate("test@example.com", "ValidPassword123!", httpServletRequest);
 

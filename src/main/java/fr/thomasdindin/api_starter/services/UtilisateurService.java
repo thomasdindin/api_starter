@@ -1,6 +1,5 @@
 package fr.thomasdindin.api_starter.services;
 
-import fr.thomasdindin.api_starter.dto.AdresseDto;
 import fr.thomasdindin.api_starter.dto.UtilisateurDto;
 import fr.thomasdindin.api_starter.entities.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;

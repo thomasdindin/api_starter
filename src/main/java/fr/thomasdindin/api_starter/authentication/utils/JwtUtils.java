@@ -1,5 +1,6 @@
 package fr.thomasdindin.api_starter.authentication.utils;
 
+import fr.thomasdindin.api_starter.entities.Utilisateur;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -8,6 +9,8 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 @Component
@@ -26,9 +29,16 @@ public class JwtUtils {
     }
 
     // Génère un token JWT
-    public String generateToken(String subject) {
+    public String generateToken(Utilisateur utilisateur) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("email", utilisateur.getEmail());
+        claims.put("role", utilisateur.getRole());
+        claims.put("nom", utilisateur.getNom());
+        claims.put("prenom", utilisateur.getPrenom());
+
         return Jwts.builder()
-                .setSubject(subject)
+                .setClaims(claims)
+                .setSubject(utilisateur.getEmail())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_MS))
                 .signWith(key, SignatureAlgorithm.HS256)

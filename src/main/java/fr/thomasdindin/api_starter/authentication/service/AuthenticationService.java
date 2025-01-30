@@ -80,7 +80,7 @@ public class AuthenticationService {
         utilisateurRepository.save(utilisateur);
 
         // Générer un JWT
-        String token = jwtUtils.generateToken(utilisateur.getEmail());
+        String token = jwtUtils.generateToken(utilisateur);
 
         // Générer le log de connexion réussie
         auditLogService.log(AuditAction.SUCCESSFUL_LOGIN, utilisateur, request.getRemoteAddr());

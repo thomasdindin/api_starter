@@ -3,9 +3,8 @@ Ce projet sert de base pour une api.
 Il contient une implémentation solide de l'architecture REST, des tests unitaires et d'intégration, et une documentation Swagger.
 
 ## TODO
-- [ ] Créer les tests unitaires et d'intégration pour le service d'authentification
-- [ ] Créer une documentation Swagger
-
+- Revoir la réponse de l'authentification : renvoyer l'id pour envoyer le lien de vérification de l'email, et le JWT serait suffisant. 
+- Revoir l'anti DDoS : même si l'ip est bloquée, on peut quand même effectuer des requêtes
 ## Prérequis
 - docker
 - java 23
