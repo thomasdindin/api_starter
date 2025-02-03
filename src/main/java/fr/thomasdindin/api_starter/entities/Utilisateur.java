@@ -76,7 +76,6 @@ public class Utilisateur {
     @Column(name = "date_naissance")
     private Instant dateNaissance;
 
-    @Size(max = 10)
     @Enumerated(EnumType.STRING)
     @Column(name = "genre", length = 10)
     private GenreUtilisateur genre;
