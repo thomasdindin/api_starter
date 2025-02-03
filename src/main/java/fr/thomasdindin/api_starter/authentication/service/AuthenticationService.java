@@ -21,6 +21,7 @@ import java.util.UUID;
 @Service
 public class AuthenticationService {
 
+    public static final String UTILISATEUR_NON_TROUVE = "Utilisateur non trouvé";
     private final UtilisateurRepository utilisateurRepository;
     private final AuditLogService auditLogService;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -65,7 +66,7 @@ public class AuthenticationService {
         } else if (!passwordEncoder.matches(motDePasse, utilisateur.getMotDePasse())) {
             logginError(request, utilisateur);
             throw new AuthenticationException("Mot de passe incorrect");
-        } else if (!utilisateur.getCompteActive()) {
+        } else if (Boolean.FALSE.equals(utilisateur.getCompteActive())) {
             auditLogService.log(AuditAction.FAILED_LOGIN, utilisateur, request.getRemoteAddr());
             throw new EmailNotVerfiedException("Votre compte n'est pas activé");
         }
@@ -86,8 +87,8 @@ public class AuthenticationService {
 
         if (utilisateurOpt.isEmpty()) {
             auditLogService.log(AuditAction.FAILED_EMAIL_VERIFICATION, null, request.getRemoteAddr());
-            throw new NoMatchException("Utilisateur non trouvé");
-        } else if (utilisateurOpt.get().getCompteActive()) {
+            throw new NoMatchException(UTILISATEUR_NON_TROUVE);
+        } else if (Boolean.TRUE.equals(utilisateurOpt.get().getCompteActive())) {
             auditLogService.log(AuditAction.FAILED_EMAIL_VERIFICATION, utilisateurOpt.get(), request.getRemoteAddr());
             throw new UnsupportedOperationException("Votre compte est déjà activé");
         }
@@ -124,14 +125,14 @@ public class AuthenticationService {
 
         if (utilisateurOpt.isEmpty()) {
             auditLogService.log(AuditAction.FAILED_LOGIN, null, request.getRemoteAddr());
-            throw new AuthenticationException("Utilisateur non trouvé");
+            throw new AuthenticationException(AuthenticationService.UTILISATEUR_NON_TROUVE);
         }
         return utilisateurOpt.get();
     }
 
     public String refreshToken(String refreshToken) {
         String userId = jwtUtils.extractSubject(refreshToken);
-        Utilisateur utilisateur = utilisateurRepository.findById(UUID.fromString(userId)).orElseThrow(() -> new NoMatchException("Utilisateur non trouvé"));
+        Utilisateur utilisateur = utilisateurRepository.findById(UUID.fromString(userId)).orElseThrow(() -> new NoMatchException(UTILISATEUR_NON_TROUVE));
 
         return jwtUtils.generateToken(utilisateur);
     }
