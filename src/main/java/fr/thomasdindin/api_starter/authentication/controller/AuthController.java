@@ -6,7 +6,7 @@ import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException
 import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
 import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
 import fr.thomasdindin.api_starter.authentication.service.PasswordResetService;
-import fr.thomasdindin.api_starter.entities.Utilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.authentication.service.AuthenticationService;
 import fr.thomasdindin.api_starter.services.VerificationEmailService;
 import jakarta.servlet.http.HttpServletRequest;

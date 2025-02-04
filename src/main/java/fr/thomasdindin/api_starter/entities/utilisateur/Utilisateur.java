@@ -1,6 +1,8 @@
-package fr.thomasdindin.api_starter.entities;
+package fr.thomasdindin.api_starter.entities.utilisateur;
 
-import fr.thomasdindin.api_starter.audit.AuditLog;
+import fr.thomasdindin.api_starter.entities.Adresse;
+import fr.thomasdindin.api_starter.entities.utilisateur.enums.GenreUtilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.enums.Role;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -10,8 +12,6 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
-import java.util.LinkedHashSet;
-import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -37,9 +37,10 @@ public class Utilisateur {
     @Column(name = "mot_de_passe", nullable = false)
     private String motDePasse;
 
-    @ColumnDefault("'USER'")
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", length = 50)
-    private String role;
+    private Role role;
+
 
     @ColumnDefault("false")
     @Column(name = "compte_active")
@@ -94,6 +95,7 @@ public class Utilisateur {
         dateCreation = Instant.now();
         compteActive = false;
         compteBloque = false;
+        role = Role.CLIENT;
     }
 
 }

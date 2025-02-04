@@ -3,7 +3,7 @@ package fr.thomasdindin.api_starter.audit.service;
 import fr.thomasdindin.api_starter.audit.AuditAction;
 import fr.thomasdindin.api_starter.audit.AuditLog;
 import fr.thomasdindin.api_starter.audit.repository.AuditLogRepository;
-import fr.thomasdindin.api_starter.entities.Utilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;

@@ -2,7 +2,7 @@ package fr.thomasdindin.api_starter.services;
 
 import fr.thomasdindin.api_starter.emails.EmailMessage;
 import fr.thomasdindin.api_starter.emails.RabbitMQConfig;
-import fr.thomasdindin.api_starter.entities.Utilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.entities.VerificationEmail;
 import fr.thomasdindin.api_starter.repositories.VerificationEmailRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;

@@ -6,7 +6,7 @@ import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException
 import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
 import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
 import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
-import fr.thomasdindin.api_starter.entities.Utilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
 import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;

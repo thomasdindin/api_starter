@@ -1,6 +1,6 @@
 package fr.thomasdindin.api_starter.audit;
 
-import fr.thomasdindin.api_starter.entities.Utilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

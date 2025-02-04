@@ -1,6 +1,7 @@
 package fr.thomasdindin.api_starter.dto;
 
-import fr.thomasdindin.api_starter.entities.GenreUtilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.enums.GenreUtilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -11,7 +12,7 @@ import java.io.Serializable;
 import java.time.Instant;
 
 /**
- * DTO for {@link fr.thomasdindin.api_starter.entities.Utilisateur}
+ * DTO for {@link Utilisateur}
  */
 @Data
 @AllArgsConstructor

@@ -1,7 +1,7 @@
 package fr.thomasdindin.api_starter.services;
 
 import fr.thomasdindin.api_starter.dto.UtilisateurDto;
-import fr.thomasdindin.api_starter.entities.Utilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

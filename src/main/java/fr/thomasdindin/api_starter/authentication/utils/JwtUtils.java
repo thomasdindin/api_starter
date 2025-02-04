@@ -1,6 +1,6 @@
 package fr.thomasdindin.api_starter.authentication.utils;
 
-import fr.thomasdindin.api_starter.entities.Utilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -38,7 +38,7 @@ public class JwtUtils {
 
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(utilisateur.getEmail())
+                .setSubject(utilisateur.getId().toString())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_MS))
                 .signWith(key, SignatureAlgorithm.HS256)

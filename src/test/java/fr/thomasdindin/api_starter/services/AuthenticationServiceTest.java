@@ -7,7 +7,7 @@ import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException
 import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
 import fr.thomasdindin.api_starter.authentication.service.AuthenticationService;
 import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
-import fr.thomasdindin.api_starter.entities.Utilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

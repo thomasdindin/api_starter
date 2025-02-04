@@ -3,7 +3,7 @@ package fr.thomasdindin.api_starter.authentication.service;
 import fr.thomasdindin.api_starter.emails.EmailMessage;
 import fr.thomasdindin.api_starter.emails.RabbitMQConfig;
 import fr.thomasdindin.api_starter.entities.PasswordReset;
-import fr.thomasdindin.api_starter.entities.Utilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.PasswordResetRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
