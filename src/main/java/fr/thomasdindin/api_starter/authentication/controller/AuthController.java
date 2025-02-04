@@ -5,8 +5,10 @@ import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException
 import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
 import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
 import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
+import fr.thomasdindin.api_starter.authentication.service.PasswordResetService;
 import fr.thomasdindin.api_starter.entities.Utilisateur;
 import fr.thomasdindin.api_starter.authentication.service.AuthenticationService;
+import fr.thomasdindin.api_starter.services.VerificationEmailService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.websocket.server.PathParam;
@@ -23,9 +25,15 @@ import java.util.UUID;
 public class AuthController {
 
     private final AuthenticationService authenticationService;
+    private final VerificationEmailService verificationEmailService;
+    private final PasswordResetService passwordResetService;
 
-    public AuthController(@Autowired AuthenticationService authenticationService) {
+    public AuthController(@Autowired AuthenticationService authenticationService,
+                          @Autowired VerificationEmailService verificationEmailService,
+                          @Autowired PasswordResetService passwordResetService) {
         this.authenticationService = authenticationService;
+        this.verificationEmailService = verificationEmailService;
+        this.passwordResetService = passwordResetService;
     }
 
     /**
@@ -56,6 +64,7 @@ public class AuthController {
     public ResponseEntity<UUID> register(@Valid @RequestBody Utilisateur utilisateur, HttpServletRequest request) {
         try {
             UUID id = authenticationService.registerUtilisateur(utilisateur, request).getId();
+            verificationEmailService.generateAndSendVerificationEmail(utilisateur);
             return ResponseEntity.ok(id);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -83,5 +92,18 @@ public class AuthController {
         } catch (UnsupportedOperationException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+
+
+    // Endpoint pour demander une réinitialisation de mot de passe
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody Utilisateur utilisateur) {
+        // Ici, vous devriez chercher l'utilisateur par email, par exemple
+        // (Supposons que l'objet utilisateur contient au moins le champ email)
+
+        // Si l'utilisateur existe, déclencher l'envoi de l'email
+        passwordResetService.generateAndSendPasswordReset(utilisateur);
+
+        return ResponseEntity.ok("Un email pour réinitialiser votre mot de passe a été envoyé.");
     }
 }

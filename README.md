@@ -28,6 +28,15 @@ Pour lancer le container docker :
 docker-compose up -d
 ```
 
+Pour lancer RabbitMQ : 
+```bash
+docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+```
+
+Pour lancer MailHog : 
+```bash
+docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog
+```
 
 ## Utilisation
 ```bash
