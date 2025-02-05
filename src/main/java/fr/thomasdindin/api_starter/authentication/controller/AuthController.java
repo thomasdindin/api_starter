@@ -11,14 +11,12 @@ import fr.thomasdindin.api_starter.authentication.service.AuthenticationService;
 import fr.thomasdindin.api_starter.services.VerificationEmailService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.websocket.server.PathParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
@@ -61,11 +59,11 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UUID> register(@Valid @RequestBody Utilisateur utilisateur, HttpServletRequest request) {
+    public ResponseEntity register(@Valid @RequestBody Utilisateur utilisateur, HttpServletRequest request) {
         try {
-            UUID id = authenticationService.registerUtilisateur(utilisateur, request).getId();
+            authenticationService.registerUtilisateur(utilisateur, request);
             verificationEmailService.generateAndSendVerificationEmail(utilisateur);
-            return ResponseEntity.ok(id);
+            return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -81,21 +79,6 @@ public class AuthController {
         }
     }
 
-
-    @GetMapping("/verify-email")
-    public ResponseEntity<?> verifyEmail(@PathParam("uuid") UUID uuid, HttpServletRequest request) {
-        try {
-            authenticationService.verifyEmail(uuid, request);
-            return ResponseEntity.ok().build();
-        } catch (NoMatchException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        } catch (UnsupportedOperationException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-
-    // Endpoint pour demander une réinitialisation de mot de passe
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@RequestBody Utilisateur utilisateur) {
         // Ici, vous devriez chercher l'utilisateur par email, par exemple
@@ -105,5 +88,15 @@ public class AuthController {
         passwordResetService.generateAndSendPasswordReset(utilisateur);
 
         return ResponseEntity.ok("Un email pour réinitialiser votre mot de passe a été envoyé.");
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<String> verifyEmail(@RequestParam("token") String token) {
+        try {
+            verificationEmailService.verifyCode(token);
+            return ResponseEntity.ok("Votre email a été vérifié avec succès.");
+        } catch (NoMatchException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 }

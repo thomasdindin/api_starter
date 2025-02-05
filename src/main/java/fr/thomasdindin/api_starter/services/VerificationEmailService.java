@@ -4,8 +4,10 @@ import fr.thomasdindin.api_starter.emails.EmailMessage;
 import fr.thomasdindin.api_starter.emails.RabbitMQConfig;
 import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.entities.VerificationEmail;
+import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
 import fr.thomasdindin.api_starter.repositories.VerificationEmailRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -15,12 +17,13 @@ import java.util.Random;
 @Service
 public class VerificationEmailService {
 
+    private final UtilisateurRepository utilisateurRepository;
     private final VerificationEmailRepository verificationEmailRepository;
     private final RabbitTemplate rabbitTemplate;
     private final Random random = new Random();
 
     public VerificationEmailService(VerificationEmailRepository verificationEmailRepository,
-                                    RabbitTemplate rabbitTemplate) {
+                                    RabbitTemplate rabbitTemplate, @Autowired UtilisateurRepository utilisateurRepository) {
         this.verificationEmailRepository = verificationEmailRepository;
         this.rabbitTemplate = rabbitTemplate;
     }
@@ -57,5 +60,33 @@ public class VerificationEmailService {
                 RabbitMQConfig.EMAIL_ROUTING_KEY,
                 message
         );
+    }
+
+    public boolean verifyCode(String code) {
+        // Recherche l'entité de vérification
+        VerificationEmail verificationEmail = verificationEmailRepository.findByCode(code).orElseThrow();
+
+        // Rechercher l'utilisateur
+        Utilisateur utilisateur = utilisateurRepository.findById(verificationEmail.getUtilisateur().getId()).orElseThrow();
+
+        // Vérifie que le code est correct
+        if (!verificationEmail.getCode().equals(code)) {
+            return false;
+        }
+
+        // Vérifie que le code n'a pas expiré
+        if (verificationEmail.getDateExpiration().isBefore(Instant.now())) {
+            return false;
+        }
+
+        // Marque l'entité de vérification comme vérifiée
+        verificationEmail.setVerifie(true);
+        verificationEmailRepository.save(verificationEmail);
+
+        // Active le compte de l'utilisateur
+        utilisateur.setCompteActive(true);
+        utilisateurRepository.save(utilisateur);
+
+        return true;
     }
 }
