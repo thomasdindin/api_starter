@@ -26,6 +26,7 @@ public class VerificationEmailService {
                                     RabbitTemplate rabbitTemplate, @Autowired UtilisateurRepository utilisateurRepository) {
         this.verificationEmailRepository = verificationEmailRepository;
         this.rabbitTemplate = rabbitTemplate;
+        this.utilisateurRepository = utilisateurRepository;
     }
 
     /**

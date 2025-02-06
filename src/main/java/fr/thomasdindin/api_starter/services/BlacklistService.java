@@ -1,7 +1,9 @@
 package fr.thomasdindin.api_starter.services;
 
 import fr.thomasdindin.api_starter.audit.repository.AuditLogRepository;
+import fr.thomasdindin.api_starter.dto.BlacklistDto;
 import fr.thomasdindin.api_starter.entities.Blacklist;
+import fr.thomasdindin.api_starter.mappers.BlacklistMapper;
 import fr.thomasdindin.api_starter.repositories.BlacklistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,5 +43,9 @@ public class BlacklistService {
             // Bloquer les IP si elles dépassent la limite
             blockIp(ipAddress, "Dépassement des " + maxRequests + " requêtes en " + timeWindowInMinutes + " minutes.");
         }
+    }
+
+    public List<BlacklistDto> findAll() {
+        return blacklistRepository.findAll().stream().map(BlacklistMapper::toDto).toList();
     }
 }

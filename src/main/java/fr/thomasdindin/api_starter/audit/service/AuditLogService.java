@@ -3,10 +3,13 @@ package fr.thomasdindin.api_starter.audit.service;
 import fr.thomasdindin.api_starter.audit.AuditAction;
 import fr.thomasdindin.api_starter.audit.AuditLog;
 import fr.thomasdindin.api_starter.audit.repository.AuditLogRepository;
+import fr.thomasdindin.api_starter.dto.AuditLogDto;
 import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
+import fr.thomasdindin.api_starter.mappers.AuditLogMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 public class AuditLogService {
@@ -23,5 +26,9 @@ public class AuditLogService {
         auditLog.setAdresseIp(adresseIp);
         auditLog.setDateAction(Instant.now());
         auditLogRepository.save(auditLog);
+    }
+
+    public List<AuditLogDto> findAll() {
+        return auditLogRepository.findAll().stream().map(AuditLogMapper::toDto).toList();
     }
 }

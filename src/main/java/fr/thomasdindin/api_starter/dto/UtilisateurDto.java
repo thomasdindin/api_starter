@@ -2,8 +2,10 @@ package fr.thomasdindin.api_starter.dto;
 
 import fr.thomasdindin.api_starter.entities.utilisateur.enums.GenreUtilisateur;
 import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
+import fr.thomasdindin.api_starter.entities.utilisateur.enums.Role;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -18,6 +20,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @NoArgsConstructor
 @Accessors(chain = true)
+@Builder
 public class UtilisateurDto implements Serializable {
     @Email(message = "Email invalide")
     @NotBlank(message = "L'email est obligatoire")
@@ -26,6 +29,7 @@ public class UtilisateurDto implements Serializable {
     @NotNull
     @Size(max = 50)
     private String prenom;
+    private Role role;
     @NotNull
     @Size(max = 50)
     private String nom;
