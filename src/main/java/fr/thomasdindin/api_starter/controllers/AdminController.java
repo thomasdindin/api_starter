@@ -1,8 +1,10 @@
 package fr.thomasdindin.api_starter.controllers;
 
 import fr.thomasdindin.api_starter.audit.service.AuditLogService;
+import fr.thomasdindin.api_starter.audit.service.MonitoringService;
 import fr.thomasdindin.api_starter.dto.AuditLogDto;
 import fr.thomasdindin.api_starter.dto.BlacklistDto;
+import fr.thomasdindin.api_starter.dto.MonitoringDto;
 import fr.thomasdindin.api_starter.dto.UtilisateurDto;
 import fr.thomasdindin.api_starter.services.BlacklistService;
 import fr.thomasdindin.api_starter.services.UtilisateurService;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @PreAuthorize("hasRole('ADMIN')")
@@ -23,11 +26,13 @@ public class AdminController {
     private final AuditLogService auditLogService;
     private final BlacklistService blacklistService;
     private final UtilisateurService utilisateurService;
+    private final MonitoringService monitoringService;
 
-    public AdminController(@Autowired AuditLogService auditLogService, @Autowired BlacklistService blacklistService, @Autowired UtilisateurService utilisateurService) {
+    public AdminController(@Autowired AuditLogService auditLogService, @Autowired BlacklistService blacklistService, @Autowired UtilisateurService utilisateurService, @Autowired MonitoringService monitoringService) {
         this.auditLogService = auditLogService;
         this.blacklistService = blacklistService;
         this.utilisateurService = utilisateurService;
+        this.monitoringService = monitoringService;
     }
 
     @GetMapping("/audit")
@@ -43,5 +48,11 @@ public class AdminController {
     @GetMapping("/utilisateurs")
     public ResponseEntity<List<UtilisateurDto>> utilisateurs() {
         return utilisateurService.findAll().isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(utilisateurService.findAll());
+    }
+
+    @GetMapping("/monitoring")
+    public ResponseEntity<MonitoringDto> getMonitoring() {
+        MonitoringDto dto = monitoringService.getMonitoringData();
+        return ResponseEntity.ok(dto);
     }
 }

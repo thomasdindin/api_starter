@@ -9,7 +9,11 @@ import fr.thomasdindin.api_starter.mappers.AuditLogMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class AuditLogService {
