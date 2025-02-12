@@ -5,6 +5,7 @@ import fr.thomasdindin.api_starter.entities.utilisateur.enums.GenreUtilisateur;
 import fr.thomasdindin.api_starter.entities.utilisateur.enums.Role;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;

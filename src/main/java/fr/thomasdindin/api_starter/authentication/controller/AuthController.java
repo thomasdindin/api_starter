@@ -1,20 +1,16 @@
 package fr.thomasdindin.api_starter.authentication.controller;
 
 import fr.thomasdindin.api_starter.authentication.dto.LoginRequestDTO;
-import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException;
-import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
-import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
-import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
+import fr.thomasdindin.api_starter.authentication.dto.RegisterRequestDto;
+import fr.thomasdindin.api_starter.authentication.service.AuthenticationService;
 import fr.thomasdindin.api_starter.authentication.service.PasswordResetService;
 import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
-import fr.thomasdindin.api_starter.authentication.service.AuthenticationService;
 import fr.thomasdindin.api_starter.services.VerificationEmailService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,72 +34,57 @@ public class AuthController {
     }
 
     /**
-     * A la connexion, on renvoie un token JWT, ainsi qu'un refresh token.
+     * À la connexion, on renvoie un token JWT, ainsi qu'un refresh token.
      * Le token JWT est valide 15 minutes, et le refresh token 7 jours.
-     * @param loginRequestDTO contiens l'email et le mot de passe
+     * @param loginRequestDTO contient l'email et le mot de passe
      * @param request la requête HTTP
-     * @return un objet contenant le token JWT et le refresh token
+     * @return un objet contenant l'accessToken (et pas le refresh token)
      */
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginRequestDTO loginRequestDTO,
                                                      HttpServletRequest request,
                                                      HttpServletResponse response) {
-        try {
-            // On récupère la map de tokens { "accessToken": "...", "refreshToken": "..." }
-            Map<String, String> tokens = authenticationService.authenticate(loginRequestDTO.getEmail(), loginRequestDTO.getPassword(), request);
+        // 1. Authentification (peut lever AuthenticationException, EmailNotVerfiedException, etc.)
+        Map<String, String> tokens = authenticationService.authenticate(
+                loginRequestDTO.getEmail(),
+                loginRequestDTO.getPassword(),
+                request
+        );
 
-            // Extraire le refresh token
-            String refreshToken = tokens.get("refreshToken");
-
-            // Créer un cookie HttpOnly
-            if (refreshToken != null) {
-                Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
-                refreshCookie.setHttpOnly(true);        // Empêche l'accès depuis JS
-                refreshCookie.setSecure(false);          // Exige HTTPS (recommandé en prod)
-                refreshCookie.setPath("/");             // Chemin où le cookie est valable
-                refreshCookie.setMaxAge(7 * 24 * 60 * 60); // Durée de vie, ex. 7 jours
-                // refreshCookie.setDomain("votre-domaine.com"); // Optionnel, si vous voulez restreindre le domaine
-                // refreshCookie.setSameSite("None"); // Ou "Lax" / "Strict", dépend de votre config
-                response.addCookie(refreshCookie);
-            }
-
-            // Ne plus renvoyer le refreshToken en clair :
-            tokens.remove("refreshToken");
-
-            // On renvoie juste l'accessToken (et éventuellement d'autres infos).
-            return ResponseEntity.ok(tokens);
-
-        } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        } catch (EmailNotVerfiedException e) {
-            return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).build();
-        } catch (AccountBlockedException e) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+        // 2. On récupère le refresh token et on le met en cookie HttpOnly
+        String refreshToken = tokens.get("refreshToken");
+        if (refreshToken != null) {
+            Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+            refreshCookie.setHttpOnly(true);
+            refreshCookie.setSecure(false);         // En prod => true + HTTPS
+            refreshCookie.setPath("/");
+            refreshCookie.setMaxAge(7 * 24 * 60 * 60);
+            response.addCookie(refreshCookie);
         }
-    }
 
+        // 3. On retire le refreshToken de la réponse
+        tokens.remove("refreshToken");
+
+        // 4. On renvoie juste l'accessToken
+        return ResponseEntity.ok(tokens);
+    }
 
     @PostMapping("/register")
-    public ResponseEntity register(@Valid @RequestBody Utilisateur utilisateur, HttpServletRequest request) {
-        try {
-            authenticationService.registerUtilisateur(utilisateur, request);
-            verificationEmailService.generateAndSendVerificationEmail(utilisateur);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
+    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequestDto registerRequestDTO,
+                                         HttpServletRequest request) {
+        // Appel du service
+        Utilisateur newUser = authenticationService.registerUtilisateur(registerRequestDTO, request);
+
+        // Générez et envoyez l'email de vérification
+        verificationEmailService.generateAndSendVerificationEmail(newUser);
+
+        return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/refresh-token")
-    public ResponseEntity<String> refreshToken(@RequestParam("refreshToken") String refreshToken) {
-        try {
-            String token = authenticationService.refreshToken(refreshToken);
-            return ResponseEntity.ok(token);
-        } catch (NoMatchException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-    }
 
+    /**
+     * Rafraîchit le token (en POST) à partir du cookie "refreshToken"
+     */
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, String>> refreshToken(HttpServletRequest request,
                                                             HttpServletResponse response) {
@@ -113,38 +94,35 @@ public class AuthController {
             for (Cookie cookie : cookies) {
                 if ("refreshToken".equals(cookie.getName())) {
                     String refreshToken = cookie.getValue();
-                    // Vérifier / décoder refreshToken, etc.
-                    // Si valide, générer un nouvel accessToken, potentiellement un nouveau refreshToken
-
                     String newToken = authenticationService.refreshToken(refreshToken);
 
-                    // Renvoyer un JSON avec le nouvel accessToken
                     Map<String, String> result = new HashMap<>();
                     result.put("accessToken", newToken);
                     return ResponseEntity.ok(result);
                 }
             }
         }
-
-        // Si on ne trouve pas le cookie refreshToken ou s’il est invalide => 401
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        // Si on ne trouve pas le cookie, ou s’il est invalide => 401 (levé par l'extraction ou direct)
+        return ResponseEntity.status(401).build();
     }
 
-
+    /**
+     * Envoie un mail pour réinitialiser le mot de passe
+     */
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@RequestBody Utilisateur utilisateur) {
+        // Gère la génération et l'envoi du mail
         passwordResetService.generateAndSendPasswordReset(utilisateur);
-
         return ResponseEntity.ok("Un email pour réinitialiser votre mot de passe a été envoyé.");
     }
 
+    /**
+     * Vérifie un email à partir d'un code (GET param)
+     */
     @GetMapping("/verify")
     public ResponseEntity<String> verifyEmail(@RequestParam("code") String token) {
-        try {
-            verificationEmailService.verifyCode(token);
-            return ResponseEntity.ok("Votre email a été vérifié avec succès.");
-        } catch (NoMatchException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
+        // Peut lever NoMatchException
+        verificationEmailService.verifyCode(token);
+        return ResponseEntity.ok("Votre email a été vérifié avec succès.");
     }
 }

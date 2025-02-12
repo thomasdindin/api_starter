@@ -2,6 +2,7 @@ package fr.thomasdindin.api_starter.authentication.service;
 
 import fr.thomasdindin.api_starter.audit.AuditAction;
 import fr.thomasdindin.api_starter.audit.service.AuditLogService;
+import fr.thomasdindin.api_starter.authentication.dto.RegisterRequestDto;
 import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException;
 import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
 import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
@@ -38,22 +39,31 @@ public class AuthenticationService {
     /**
      * Inscription d'un nouvel utilisateur
      */
-    public Utilisateur registerUtilisateur(Utilisateur utilisateur, HttpServletRequest request) {
+    public Utilisateur registerUtilisateur(RegisterRequestDto dto, HttpServletRequest request) {
         // Vérifier si l'utilisateur existe déjà
-        Optional<Utilisateur> existingUser = utilisateurRepository.findByEmail(utilisateur.getEmail());
+        Optional<Utilisateur> existingUser = utilisateurRepository.findByEmail(dto.getEmail());
         if (existingUser.isPresent()) {
             auditLogService.log(AuditAction.FAILED_REGISTRATION, existingUser.get(), request.getRemoteAddr());
             throw new AuthenticationException("Un utilisateur avec cet e-mail existe déjà.");
         }
 
+        // Construire un nouvel utilisateur
+        Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setEmail(dto.getEmail());
+        utilisateur.setNom(dto.getNom());
+        utilisateur.setPrenom(dto.getPrenom());
+
         // Hacher le mot de passe
-        String encodedPassword = passwordEncoder.encode(utilisateur.getMotDePasse());
+        String encodedPassword = passwordEncoder.encode(dto.getPassword());
         utilisateur.setMotDePasse(encodedPassword);
 
+        // Sauvegarde en base
         Utilisateur savedUtilisateur = utilisateurRepository.save(utilisateur);
         auditLogService.log(AuditAction.SUCCESSFUL_REGISTRATION, savedUtilisateur, request.getRemoteAddr());
+
         return savedUtilisateur;
     }
+
 
     public Map<String, String> authenticate(String email, String motDePasse, HttpServletRequest request) {
 
