@@ -3,10 +3,7 @@ package fr.thomasdindin.api_starter.authentication.service;
 import fr.thomasdindin.api_starter.audit.AuditAction;
 import fr.thomasdindin.api_starter.audit.service.AuditLogService;
 import fr.thomasdindin.api_starter.authentication.dto.RegisterRequestDto;
-import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException;
-import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
-import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
-import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
+import fr.thomasdindin.api_starter.authentication.errors.*;
 import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
 import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
@@ -44,7 +41,7 @@ public class AuthenticationService {
         Optional<Utilisateur> existingUser = utilisateurRepository.findByEmail(dto.getEmail());
         if (existingUser.isPresent()) {
             auditLogService.log(AuditAction.FAILED_REGISTRATION, existingUser.get(), request.getRemoteAddr());
-            throw new AuthenticationException("Un utilisateur avec cet e-mail existe déjà.");
+            throw new EmailAlreadyUsedException("Un utilisateur avec cet e-mail existe déjà.");
         }
 
         // Construire un nouvel utilisateur

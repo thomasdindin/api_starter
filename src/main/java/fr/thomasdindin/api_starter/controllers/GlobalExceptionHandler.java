@@ -1,14 +1,11 @@
 package fr.thomasdindin.api_starter.controllers;
 
-import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
+import fr.thomasdindin.api_starter.authentication.errors.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException;
-import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
-import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,6 +33,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 
+    @ExceptionHandler(EmailAlreadyUsedException.class)
+    public ResponseEntity<Void> handleEmailAlreadyUsed(EmailAlreadyUsedException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).build();
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
