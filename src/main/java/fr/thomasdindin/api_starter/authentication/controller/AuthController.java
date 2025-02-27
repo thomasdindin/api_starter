@@ -103,9 +103,9 @@ public class AuthController {
      * Envoie un mail pour réinitialiser le mot de passe
      */
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody Utilisateur utilisateur) {
+    public ResponseEntity<String> forgotPassword(@RequestBody String email) {
         // Gère la génération et l'envoi du mail
-        passwordResetService.generateAndSendPasswordReset(utilisateur);
+        passwordResetService.generateAndSendPasswordReset(email);
         return ResponseEntity.ok("Un email pour réinitialiser votre mot de passe a été envoyé.");
     }
 
