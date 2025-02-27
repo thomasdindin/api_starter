@@ -1,6 +1,6 @@
 package fr.thomasdindin.api_starter.security;
 
-import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
+import fr.thomasdindin.api_starter.authentication.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,11 +18,11 @@ import java.util.UUID;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtils jwtUtils;
+    private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
 
-    public JwtAuthenticationFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService) {
-        this.jwtUtils = jwtUtils;
+    public JwtAuthenticationFilter(JwtService jwtService, CustomUserDetailsService userDetailsService) {
+        this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
     }
 
@@ -42,12 +42,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7); // Enlever "Bearer " du début du token
-        userId = UUID.fromString(jwtUtils.extractSubject(jwt)); // Extrait l'email ou l'identifiant depuis le JWT
+        userId = UUID.fromString(jwtService.extractSubject(jwt)); // Extrait l'email ou l'identifiant depuis le JWT
 
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserById(userId);
 
-            if (jwtUtils.validateToken(jwt)) {
+            if (jwtService.validateToken(jwt)) {
                 UsernamePasswordAuthenticationToken authenticationToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

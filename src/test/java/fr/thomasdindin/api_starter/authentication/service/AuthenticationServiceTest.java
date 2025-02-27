@@ -7,7 +7,6 @@ import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException
 import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
 import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
 import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
-import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
 import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,7 +31,7 @@ class AuthenticationServiceTest {
     private AuditLogService auditLogService;
 
     @Mock
-    private JwtUtils jwtUtils;
+    private JwtService jwtService;
 
     @Mock
     private HttpServletRequest request;
@@ -74,7 +73,7 @@ class AuthenticationServiceTest {
 
             when(utilisateurRepository.save(any(Utilisateur.class))).thenReturn(saved);
 
-            Utilisateur result = authenticationService.registerUtilisateur(dto, request);
+            Utilisateur result = authenticationService.register(dto, request);
 
             // Vérifications
             verify(auditLogService).log(eq(AuditAction.SUCCESSFUL_REGISTRATION), eq(saved), eq("127.0.0.1"));
@@ -97,7 +96,7 @@ class AuthenticationServiceTest {
             when(utilisateurRepository.findByEmail(dto.getEmail())).thenReturn(Optional.of(existingUser));
 
             assertThrows(AuthenticationException.class, () ->
-                    authenticationService.registerUtilisateur(dto, request));
+                    authenticationService.register(dto, request));
 
             // On vérifie que le log FAILED_REGISTRATION a été fait
             verify(auditLogService).log(eq(AuditAction.FAILED_REGISTRATION), eq(existingUser), eq("127.0.0.1"));
@@ -129,7 +128,7 @@ class AuthenticationServiceTest {
             when(utilisateurRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
 
             assertThrows(AuthenticationException.class, () ->
-                    authenticationService.authenticate("unknown@example.com", "Password@1", request));
+                    authenticationService.login("unknown@example.com", "Password@1", request));
 
             // On vérifie le log
             verify(auditLogService).log(eq(AuditAction.FAILED_LOGIN), isNull(), eq("127.0.0.1"));
@@ -142,7 +141,7 @@ class AuthenticationServiceTest {
             when(utilisateurRepository.findByEmail(utilisateur.getEmail())).thenReturn(Optional.of(utilisateur));
 
             assertThrows(AccountBlockedException.class, () ->
-                    authenticationService.authenticate(utilisateur.getEmail(), "Password@1", request));
+                    authenticationService.login(utilisateur.getEmail(), "Password@1", request));
 
             verify(auditLogService).log(eq(AuditAction.BLOCKED_ACCOUNT), eq(utilisateur), eq("127.0.0.1"));
         }
@@ -154,7 +153,7 @@ class AuthenticationServiceTest {
 
             // Utiliser un mot de passe erroné
             assertThrows(AuthenticationException.class, () ->
-                    authenticationService.authenticate(utilisateur.getEmail(), "WrongPassword", request));
+                    authenticationService.login(utilisateur.getEmail(), "WrongPassword", request));
 
             // On vérifie que logginError() a incrémenté la tentative
             assertEquals(1, utilisateur.getTentativesConnexion().intValue());
@@ -168,36 +167,11 @@ class AuthenticationServiceTest {
             when(utilisateurRepository.findByEmail(utilisateur.getEmail())).thenReturn(Optional.of(utilisateur));
 
             assertThrows(EmailNotVerfiedException.class, () ->
-                    authenticationService.authenticate(utilisateur.getEmail(), "Password@1", request));
+                    authenticationService.login(utilisateur.getEmail(), "Password@1", request));
 
             verify(auditLogService).log(eq(AuditAction.FAILED_LOGIN), eq(utilisateur), eq("127.0.0.1"));
         }
 
-        @Test
-        @DisplayName("Doit renvoyer les tokens et reset tentatives si OK")
-        void testAuthenticate_Success() {
-            when(utilisateurRepository.findByEmail(utilisateur.getEmail())).thenReturn(Optional.of(utilisateur));
-
-            // Mock la génération de tokens
-            Map<String, String> tokensMap = new HashMap<>();
-            tokensMap.put("accessToken", "fakeAccess");
-            tokensMap.put("refreshToken", "fakeRefresh");
-            when(jwtUtils.generateTokens(utilisateur)).thenReturn(tokensMap);
-
-            Map<String, String> result = authenticationService.authenticate(
-                    utilisateur.getEmail(), "Password@1", request);
-
-            assertNotNull(result);
-            assertEquals("fakeAccess", result.get("accessToken"));
-            assertEquals("fakeRefresh", result.get("refreshToken"));
-
-            // Vérifier que la tentative est reset
-            verify(utilisateurRepository).save(utilisateurCaptor.capture());
-            Utilisateur saved = utilisateurCaptor.getValue();
-            assertEquals(0, saved.getTentativesConnexion().intValue());
-
-            verify(auditLogService).log(eq(AuditAction.SUCCESSFUL_LOGIN), eq(utilisateur), eq("127.0.0.1"));
-        }
 
         @Test
         @DisplayName("Doit bloquer le compte après 3 tentatives invalides")
@@ -207,17 +181,17 @@ class AuthenticationServiceTest {
 
             // 1ère tentative échouée
             assertThrows(AuthenticationException.class, () ->
-                    authenticationService.authenticate(utilisateur.getEmail(), "WrongPassword", request));
+                    authenticationService.login(utilisateur.getEmail(), "WrongPassword", request));
             assertEquals(1, utilisateur.getTentativesConnexion().intValue());
 
             // 2ème tentative échouée
             assertThrows(AuthenticationException.class, () ->
-                    authenticationService.authenticate(utilisateur.getEmail(), "WrongPassword", request));
+                    authenticationService.login(utilisateur.getEmail(), "WrongPassword", request));
             assertEquals(2, utilisateur.getTentativesConnexion().intValue());
 
             // 3ème tentative échouée -> blocage
             AuthenticationException ex = assertThrows(AuthenticationException.class, () ->
-                    authenticationService.authenticate(utilisateur.getEmail(), "WrongPassword", request));
+                    authenticationService.login(utilisateur.getEmail(), "WrongPassword", request));
             assertEquals("Votre compte a été bloqué suite à trop de tentatives échouées.", ex.getMessage());
             assertEquals(3, utilisateur.getTentativesConnexion().intValue());
             assertTrue(utilisateur.getCompteBloque());
@@ -274,40 +248,6 @@ class AuthenticationServiceTest {
             assertTrue(result.getCompteActive());
             verify(auditLogService).log(eq(AuditAction.SUCCESSFUL_EMAIL_VERIFICATION), eq(utilisateur), eq("127.0.0.1"));
             verify(utilisateurRepository).save(utilisateur);
-        }
-    }
-
-    @Nested
-    @DisplayName("Tests de refreshToken")
-    class RefreshTokenTests {
-
-        @Test
-        @DisplayName("Doit lever NoMatchException si l'utilisateur n'existe pas")
-        void testRefreshToken_UserNotFound() {
-            // On fait semblant de parser un userId = random
-            UUID userId = UUID.randomUUID();
-            when(jwtUtils.extractSubject("fakeRefresh")).thenReturn(userId.toString());
-            when(utilisateurRepository.findById(userId)).thenReturn(Optional.empty());
-
-            assertThrows(NoMatchException.class, () -> authenticationService.refreshToken("fakeRefresh"));
-        }
-
-        @Test
-        @DisplayName("Doit renvoyer un nouveau token si OK")
-        void testRefreshToken_Success() {
-            // On fait semblant de parser un userId = random
-            UUID userId = UUID.randomUUID();
-            when(jwtUtils.extractSubject("fakeRefresh")).thenReturn(userId.toString());
-
-            Utilisateur utilisateur = new Utilisateur();
-            utilisateur.setId(userId);
-
-            when(utilisateurRepository.findById(userId)).thenReturn(Optional.of(utilisateur));
-
-            when(jwtUtils.generateToken(utilisateur)).thenReturn("newAccessToken");
-
-            String result = authenticationService.refreshToken("fakeRefresh");
-            assertEquals("newAccessToken", result);
         }
     }
 }

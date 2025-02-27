@@ -1,5 +1,6 @@
 package fr.thomasdindin.api_starter.authentication.utils;
 
+import fr.thomasdindin.api_starter.authentication.service.JwtService;
 import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.entities.utilisateur.enums.Role;
 import io.jsonwebtoken.JwtException;
@@ -14,19 +15,19 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class JwtUtilsTest {
+class JwtServiceTest {
 
-    private JwtUtils jwtUtils;
+    private JwtService jwtService;
     private Utilisateur utilisateur;
 
     @BeforeEach
     void setUp() {
         // On instancie la classe à tester
-        jwtUtils = new JwtUtils();
+        jwtService = new JwtService();
         // On injecte un SECRET_KEY valide
-        ReflectionTestUtils.setField(jwtUtils, "SECRET_KEY", "Cette_Clé_est_assez_longue_pour_le_test_!12345");
+        ReflectionTestUtils.setField(jwtService, "SECRET_KEY", "Cette_Clé_est_assez_longue_pour_le_test_!12345");
         // On appelle manuellement la méthode init() pour générer la clé
-        jwtUtils.init();
+        jwtService.init();
 
         // On construit un Utilisateur de test
         utilisateur = new Utilisateur();
@@ -44,17 +45,17 @@ class JwtUtilsTest {
         @Test
         @DisplayName("init() doit lever une exception si SECRET_KEY est null")
         void testInitWithNullSecretKey() {
-            JwtUtils testJwtUtils = new JwtUtils();
-            ReflectionTestUtils.setField(testJwtUtils, "SECRET_KEY", null);
-            assertThrows(IllegalStateException.class, testJwtUtils::init);
+            JwtService testJwtService = new JwtService();
+            ReflectionTestUtils.setField(testJwtService, "SECRET_KEY", null);
+            assertThrows(IllegalStateException.class, testJwtService::init);
         }
 
         @Test
         @DisplayName("init() doit lever une exception si SECRET_KEY est vide")
         void testInitWithEmptySecretKey() {
-            JwtUtils testJwtUtils = new JwtUtils();
-            ReflectionTestUtils.setField(testJwtUtils, "SECRET_KEY", "");
-            assertThrows(IllegalStateException.class, testJwtUtils::init);
+            JwtService testJwtService = new JwtService();
+            ReflectionTestUtils.setField(testJwtService, "SECRET_KEY", "");
+            assertThrows(IllegalStateException.class, testJwtService::init);
         }
     }
 
@@ -65,22 +66,10 @@ class JwtUtilsTest {
         @Test
         @DisplayName("generateToken() doit retourner un token non nul et valide")
         void testGenerateToken() {
-            String token = jwtUtils.generateToken(utilisateur);
+            String token = jwtService.generateAccessToken(utilisateur);
 
             assertNotNull(token, "Le token généré ne doit pas être null");
-            assertTrue(jwtUtils.validateToken(token), "Le token généré doit être valide");
-        }
-
-        @Test
-        @DisplayName("generateTokens() doit retourner un accessToken et un refreshToken valides")
-        void testGenerateTokens() {
-            Map<String, String> tokens = jwtUtils.generateTokens(utilisateur);
-
-            assertNotNull(tokens.get("accessToken"), "accessToken ne doit pas être null");
-            assertNotNull(tokens.get("refreshToken"), "refreshToken ne doit pas être null");
-
-            assertTrue(jwtUtils.validateToken(tokens.get("accessToken")), "accessToken doit être valide");
-            assertTrue(jwtUtils.validateToken(tokens.get("refreshToken")), "refreshToken doit être valide");
+            assertTrue(jwtService.validateToken(token), "Le token généré doit être valide");
         }
     }
 
@@ -92,14 +81,14 @@ class JwtUtilsTest {
         @DisplayName("validateToken() doit retourner false pour un token invalide")
         void testValidateTokenWithInvalidToken() {
             String invalidToken = "token_invalide_qui_ne_parse_pas_du_tout";
-            assertFalse(jwtUtils.validateToken(invalidToken), "Un token invalide doit renvoyer false");
+            assertFalse(jwtService.validateToken(invalidToken), "Un token invalide doit renvoyer false");
         }
 
         @Test
         @DisplayName("validateToken() doit retourner true pour un token valide")
         void testValidateTokenWithValidToken() {
-            String token = jwtUtils.generateToken(utilisateur);
-            assertTrue(jwtUtils.validateToken(token), "Un token valide doit renvoyer true");
+            String token = jwtService.generateAccessToken(utilisateur);
+            assertTrue(jwtService.validateToken(token), "Un token valide doit renvoyer true");
         }
     }
 
@@ -110,9 +99,9 @@ class JwtUtilsTest {
         @Test
         @DisplayName("extractSubject() doit retourner l'ID de l'utilisateur pour un token valide")
         void testExtractSubject() {
-            String token = jwtUtils.generateToken(utilisateur);
+            String token = jwtService.generateAccessToken(utilisateur);
 
-            String subject = jwtUtils.extractSubject(token);
+            String subject = jwtService.extractSubject(token);
             assertEquals(utilisateur.getId().toString(), subject,
                     "Le subject du token doit correspondre à l'ID de l'utilisateur");
         }
@@ -124,7 +113,7 @@ class JwtUtilsTest {
 
             // Ici, on s'attend à une exception, car extractSubject ne gère pas d'exception en interne
             // (elle va lever directement l'exception si le token est invalide).
-            assertThrows(JwtException.class, () -> jwtUtils.extractSubject(invalidToken));
+            assertThrows(JwtException.class, () -> jwtService.extractSubject(invalidToken));
         }
     }
 }

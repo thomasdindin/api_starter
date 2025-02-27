@@ -6,12 +6,12 @@ import fr.thomasdindin.api_starter.authentication.dto.RegisterRequestDto;
 import fr.thomasdindin.api_starter.authentication.errors.*;
 import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
-import fr.thomasdindin.api_starter.authentication.utils.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,20 +23,22 @@ public class AuthenticationService {
     private final UtilisateurRepository utilisateurRepository;
     private final AuditLogService auditLogService;
     private final BCryptPasswordEncoder passwordEncoder;
-    private final JwtUtils jwtUtils;
+    private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
 
-    public AuthenticationService(@Autowired UtilisateurRepository utilisateurRepository, @Autowired JwtUtils jwtUtils, @Autowired AuditLogService auditLogService) {
+    public AuthenticationService(@Autowired UtilisateurRepository utilisateurRepository, @Autowired JwtService jwtService, @Autowired AuditLogService auditLogService, @Autowired RefreshTokenService refreshTokenService) {
         this.utilisateurRepository = utilisateurRepository;
         this.auditLogService = auditLogService;
         this.passwordEncoder = new BCryptPasswordEncoder();
-        this.jwtUtils = jwtUtils;
+        this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     /**
      * Inscription d'un nouvel utilisateur
      */
-    public Utilisateur registerUtilisateur(RegisterRequestDto dto, HttpServletRequest request) {
+    public Utilisateur register(RegisterRequestDto dto, HttpServletRequest request) {
         // Vérifier si l'utilisateur existe déjà
         Optional<Utilisateur> existingUser = utilisateurRepository.findByEmail(dto.getEmail());
         if (existingUser.isPresent()) {
@@ -62,9 +64,17 @@ public class AuthenticationService {
     }
 
 
-    public Map<String, String> authenticate(String email, String motDePasse, HttpServletRequest request) {
+    /**
+     * Connexion d'un utilisateur
+     * @param email L'email de l'utilisateur
+     * @param motDePasse Le mot de passe de l'utilisateur
+     * @param request La requête HTTP
+     * @return Un objet contenant l'accessToken et le refreshToken
+     */
+    public Map<String, String> login(String email, String motDePasse, HttpServletRequest request) {
 
         Utilisateur utilisateur = searchForEmail(email, request);
+        Map<String, String> tokens = new HashMap<>();
 
         // Conditions d'accès
         if (Boolean.TRUE.equals(utilisateur.getCompteBloque())) {
@@ -85,8 +95,14 @@ public class AuthenticationService {
         // Générer le log de connexion réussie
         auditLogService.log(AuditAction.SUCCESSFUL_LOGIN, utilisateur, request.getRemoteAddr());
 
+        // Générer les tokens
+        tokens.put("accessToken", jwtService.generateAccessToken(utilisateur));
+        tokens.put("refreshToken", jwtService.generateRefreshToken(utilisateur));
+
+        refreshTokenService.createRefreshToken(tokens.get("refreshToken"), utilisateur, request);
+
         // Renvoyer les tokens d'authentification
-        return jwtUtils.generateTokens(utilisateur);
+        return tokens;
     }
 
     public Utilisateur verifyEmail(UUID uuid, HttpServletRequest request) {
@@ -137,11 +153,8 @@ public class AuthenticationService {
         return utilisateurOpt.get();
     }
 
-    public String refreshToken(String refreshToken) {
-        String userId = jwtUtils.extractSubject(refreshToken);
-        Utilisateur utilisateur = utilisateurRepository.findById(UUID.fromString(userId)).orElseThrow(() -> new NoMatchException(UTILISATEUR_NON_TROUVE));
-
-        return jwtUtils.generateToken(utilisateur);
+    public String refreshToken(String refreshToken, HttpServletRequest request) {
+        return refreshTokenService.refreshAccessToken(refreshToken, request);
     }
 
 }

@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -38,42 +37,36 @@ public class AuthController {
      * Le token JWT est valide 15 minutes, et le refresh token 7 jours.
      * @param loginRequestDTO contient l'email et le mot de passe
      * @param request la requête HTTP
-     * @return un objet contenant l'accessToken (et pas le refresh token)
      */
     @PostMapping("/login")
-    public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginRequestDTO loginRequestDTO,
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDTO loginRequestDTO,
                                                      HttpServletRequest request,
                                                      HttpServletResponse response) {
         // 1. Authentification (peut lever AuthenticationException, EmailNotVerfiedException, etc.)
-        Map<String, String> tokens = authenticationService.authenticate(
+        Map<String, String> tokens = authenticationService.login(
                 loginRequestDTO.getEmail(),
                 loginRequestDTO.getPassword(),
                 request
         );
 
-        // 2. On récupère le refresh token et on le met en cookie HttpOnly
+        // 2. On récupère les tokens et on le met en cookie HttpOnly
         String refreshToken = tokens.get("refreshToken");
         if (refreshToken != null) {
-            Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
-            refreshCookie.setHttpOnly(true);
-            refreshCookie.setSecure(false);         // En prod => true + HTTPS
-            refreshCookie.setPath("/");
-            refreshCookie.setMaxAge(7 * 24 * 60 * 60);
-            response.addCookie(refreshCookie);
+
+            response.addCookie(createCookie("refreshToken", refreshToken, 7 * 24 * 60 * 60));
         }
 
-        // 3. On retire le refreshToken de la réponse
-        tokens.remove("refreshToken");
+        String accessToken = tokens.get("accessToken");
+        response.addCookie(createCookie("accessToken", accessToken, 15 * 60));
 
-        // 4. On renvoie juste l'accessToken
-        return ResponseEntity.ok(tokens);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/register")
     public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequestDto registerRequestDTO,
                                          HttpServletRequest request) {
         // Appel du service
-        Utilisateur newUser = authenticationService.registerUtilisateur(registerRequestDTO, request);
+        Utilisateur newUser = authenticationService.register(registerRequestDTO, request);
 
         // Générez et envoyez l'email de vérification
         verificationEmailService.generateAndSendVerificationEmail(newUser);
@@ -83,10 +76,10 @@ public class AuthController {
 
 
     /**
-     * Rafraîchit le token (en POST) à partir du cookie "refreshToken"
+     * Rafraîchit le token à partir du cookie "refreshToken"
      */
-    @PostMapping("/refresh")
-    public ResponseEntity<Map<String, String>> refreshToken(HttpServletRequest request,
+    @GetMapping("/refresh")
+    public ResponseEntity<?> refreshToken(HttpServletRequest request,
                                                             HttpServletResponse response) {
         // Récupération du cookie refreshToken
         Cookie[] cookies = request.getCookies();
@@ -94,11 +87,11 @@ public class AuthController {
             for (Cookie cookie : cookies) {
                 if ("refreshToken".equals(cookie.getName())) {
                     String refreshToken = cookie.getValue();
-                    String newToken = authenticationService.refreshToken(refreshToken);
+                    String newToken = authenticationService.refreshToken(refreshToken, request);
 
-                    Map<String, String> result = new HashMap<>();
-                    result.put("accessToken", newToken);
-                    return ResponseEntity.ok(result);
+                    response.addCookie(createCookie("accessToken", newToken, 15 * 60));
+
+                    return ResponseEntity.ok().build();
                 }
             }
         }
@@ -124,5 +117,21 @@ public class AuthController {
         // Peut lever NoMatchException
         verificationEmailService.verifyCode(token);
         return ResponseEntity.ok("Votre email a été vérifié avec succès.");
+    }
+
+    /**
+     * Crée un cookie HttpOnly
+     * @param name Le nom du cookie
+     * @param value La valeur du cookie
+     * @param maxAge La durée de vie du cookie en secondes
+     * @return Le cookie créé
+     */
+    private Cookie createCookie(String name, String value, int maxAge) {
+        Cookie cookie = new Cookie(name, value);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false);         // En prod => true + HTTPS
+        cookie.setPath("/");
+        cookie.setMaxAge(maxAge);
+        return cookie;
     }
 }

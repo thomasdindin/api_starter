@@ -1,9 +1,10 @@
-package fr.thomasdindin.api_starter.authentication.utils;
+package fr.thomasdindin.api_starter.authentication.service;
 
 import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +15,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Component
-public class JwtUtils {
+public class JwtService {
     @Value("${security.jwt.secret}")
     private String SECRET_KEY;
     private static final int JWT_EXPIRATION_MS = 15 * 60 * 1000; // 15 minutes
@@ -28,8 +29,15 @@ public class JwtUtils {
         key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
     }
 
-    // Génère un token JWT
-    public String generateToken(Utilisateur utilisateur) {
+    /**
+     * Génère un access token JWT pour un utilisateur.
+     * Le token contient l'email, le rôle, le nom et le prénom de l'utilisateur.
+     * Le sujet du token est l'id de l'utilisateur.
+     * Le token expire après 15 minutes.
+     * @param utilisateur l'utilisateur pour lequel on génère le token
+     * @return le token JWT
+     */
+    public String generateAccessToken(Utilisateur utilisateur) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("email", utilisateur.getEmail());
         claims.put("role", utilisateur.getRole());
@@ -45,18 +53,19 @@ public class JwtUtils {
                 .compact();
     }
 
-    public Map<String, String> generateTokens(Utilisateur utilisateur) {
-        String refreshToken = Jwts.builder()
+    /**
+     * Renvoie un refresh token qui a pour durée de vie une semaine.
+     * Le sub est l'id de l'utilisateur.
+     * @param utilisateur l'utilisateur pour lequel on génère le token
+     * @return le refresh token
+     */
+    public String generateRefreshToken(Utilisateur utilisateur) {
+        return Jwts.builder()
                 .setSubject(utilisateur.getId().toString())
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) // 7 jours
+                .setExpiration(new Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
-
-        Map<String, String> tokens = new HashMap<>();
-        tokens.put("accessToken", generateToken(utilisateur));
-        tokens.put("refreshToken", refreshToken);
-        return tokens;
     }
 
 
