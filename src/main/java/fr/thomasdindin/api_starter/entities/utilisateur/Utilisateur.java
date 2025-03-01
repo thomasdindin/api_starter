@@ -91,6 +91,10 @@ public class Utilisateur {
     @JoinColumn(name = "adresse_id")
     private Adresse adresse;
 
+    @Size(max = 255)
+    @Column(name = "google_id")
+    private String googleId;
+
     @PrePersist
     protected void onCreate() {
         dateCreation = Instant.now();

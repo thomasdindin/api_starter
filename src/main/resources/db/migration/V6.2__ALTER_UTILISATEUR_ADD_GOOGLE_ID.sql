@@ -1,0 +1,1 @@
+ALTER TABLE utilisateur ADD COLUMN google_id VARCHAR(255) DEFAULT null;
