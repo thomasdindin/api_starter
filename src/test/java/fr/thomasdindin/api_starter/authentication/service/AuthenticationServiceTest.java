@@ -3,10 +3,7 @@ package fr.thomasdindin.api_starter.authentication.service;
 import fr.thomasdindin.api_starter.audit.AuditAction;
 import fr.thomasdindin.api_starter.audit.service.AuditLogService;
 import fr.thomasdindin.api_starter.authentication.dto.RegisterRequestDto;
-import fr.thomasdindin.api_starter.authentication.errors.AccountBlockedException;
-import fr.thomasdindin.api_starter.authentication.errors.AuthenticationException;
-import fr.thomasdindin.api_starter.authentication.errors.EmailNotVerfiedException;
-import fr.thomasdindin.api_starter.authentication.errors.NoMatchException;
+import fr.thomasdindin.api_starter.authentication.errors.*;
 import fr.thomasdindin.api_starter.entities.utilisateur.Utilisateur;
 import fr.thomasdindin.api_starter.repositories.UtilisateurRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -76,7 +73,7 @@ class AuthenticationServiceTest {
             Utilisateur result = authenticationService.register(dto, request);
 
             // Vérifications
-            verify(auditLogService).log(eq(AuditAction.SUCCESSFUL_REGISTRATION), eq(saved), eq("127.0.0.1"));
+            verify(auditLogService).log(AuditAction.SUCCESSFUL_REGISTRATION, saved, "127.0.0.1");
             assertNotNull(result);
             assertEquals(dto.getEmail(), result.getEmail());
         }
@@ -95,11 +92,11 @@ class AuthenticationServiceTest {
 
             when(utilisateurRepository.findByEmail(dto.getEmail())).thenReturn(Optional.of(existingUser));
 
-            assertThrows(AuthenticationException.class, () ->
+            assertThrows(EmailAlreadyUsedException.class, () ->
                     authenticationService.register(dto, request));
 
             // On vérifie que le log FAILED_REGISTRATION a été fait
-            verify(auditLogService).log(eq(AuditAction.FAILED_REGISTRATION), eq(existingUser), eq("127.0.0.1"));
+            verify(auditLogService).log(AuditAction.FAILED_REGISTRATION, existingUser, "127.0.0.1");
             // On s'assure qu'aucune sauvegarde n'a eu lieu
             verify(utilisateurRepository, never()).save(any(Utilisateur.class));
         }
@@ -138,38 +135,40 @@ class AuthenticationServiceTest {
         @DisplayName("Doit lever AccountBlockedException si le compte est bloqué")
         void testAuthenticate_UserBlocked() {
             utilisateur.setCompteBloque(true);
+            String email = utilisateur.getEmail();
             when(utilisateurRepository.findByEmail(utilisateur.getEmail())).thenReturn(Optional.of(utilisateur));
 
             assertThrows(AccountBlockedException.class, () ->
-                    authenticationService.login(utilisateur.getEmail(), "Password@1", request));
+                    authenticationService.login(email, "Password@1", request));
 
-            verify(auditLogService).log(eq(AuditAction.BLOCKED_ACCOUNT), eq(utilisateur), eq("127.0.0.1"));
+            verify(auditLogService).log(AuditAction.BLOCKED_ACCOUNT, utilisateur, "127.0.0.1");
         }
 
         @Test
         @DisplayName("Doit lever AuthenticationException si le mot de passe est incorrect")
         void testAuthenticate_BadPassword() {
             when(utilisateurRepository.findByEmail(utilisateur.getEmail())).thenReturn(Optional.of(utilisateur));
-
+            String email = utilisateur.getEmail();
             // Utiliser un mot de passe erroné
             assertThrows(AuthenticationException.class, () ->
-                    authenticationService.login(utilisateur.getEmail(), "WrongPassword", request));
+                    authenticationService.login(email, "WrongPassword", request));
 
             // On vérifie que logginError() a incrémenté la tentative
             assertEquals(1, utilisateur.getTentativesConnexion().intValue());
-            verify(auditLogService).log(eq(AuditAction.FAILED_LOGIN), eq(utilisateur), eq("127.0.0.1"));
+            verify(auditLogService).log(AuditAction.FAILED_LOGIN, utilisateur, "127.0.0.1");
         }
 
         @Test
         @DisplayName("Doit lever EmailNotVerfiedException si le compte n'est pas activé")
         void testAuthenticate_EmailNotVerified() {
+            String email = utilisateur.getEmail();
             utilisateur.setCompteActive(false);
             when(utilisateurRepository.findByEmail(utilisateur.getEmail())).thenReturn(Optional.of(utilisateur));
 
             assertThrows(EmailNotVerfiedException.class, () ->
-                    authenticationService.login(utilisateur.getEmail(), "Password@1", request));
+                    authenticationService.login(email, "Password@1", request));
 
-            verify(auditLogService).log(eq(AuditAction.FAILED_LOGIN), eq(utilisateur), eq("127.0.0.1"));
+            verify(auditLogService).log(AuditAction.FAILED_LOGIN, utilisateur, "127.0.0.1");
         }
 
 
@@ -179,25 +178,27 @@ class AuthenticationServiceTest {
             when(utilisateurRepository.findByEmail(utilisateur.getEmail()))
                     .thenReturn(Optional.of(utilisateur));
 
+            String email = utilisateur.getEmail();
             // 1ère tentative échouée
             assertThrows(AuthenticationException.class, () ->
-                    authenticationService.login(utilisateur.getEmail(), "WrongPassword", request));
+                    authenticationService.login(email, "WrongPassword", request));
             assertEquals(1, utilisateur.getTentativesConnexion().intValue());
 
             // 2ème tentative échouée
             assertThrows(AuthenticationException.class, () ->
-                    authenticationService.login(utilisateur.getEmail(), "WrongPassword", request));
+                    authenticationService.login(email, "WrongPassword", request));
             assertEquals(2, utilisateur.getTentativesConnexion().intValue());
+
 
             // 3ème tentative échouée -> blocage
             AuthenticationException ex = assertThrows(AuthenticationException.class, () ->
-                    authenticationService.login(utilisateur.getEmail(), "WrongPassword", request));
+                    authenticationService.login(email, "WrongPassword", request));
             assertEquals("Votre compte a été bloqué suite à trop de tentatives échouées.", ex.getMessage());
             assertEquals(3, utilisateur.getTentativesConnexion().intValue());
             assertTrue(utilisateur.getCompteBloque());
 
             verify(auditLogService, times(1))
-                    .log(eq(AuditAction.BLOCKED_ACCOUNT), eq(utilisateur), eq("127.0.0.1"));
+                    .log(AuditAction.BLOCKED_ACCOUNT, utilisateur, "127.0.0.1");
         }
     }
 
@@ -230,7 +231,7 @@ class AuthenticationServiceTest {
             assertThrows(UnsupportedOperationException.class, () ->
                     authenticationService.verifyEmail(userId, request));
 
-            verify(auditLogService).log(eq(AuditAction.FAILED_EMAIL_VERIFICATION), eq(utilisateur), eq("127.0.0.1"));
+            verify(auditLogService).log(AuditAction.FAILED_EMAIL_VERIFICATION, utilisateur, "127.0.0.1");
         }
 
         @Test
@@ -246,7 +247,7 @@ class AuthenticationServiceTest {
             Utilisateur result = authenticationService.verifyEmail(userId, request);
 
             assertTrue(result.getCompteActive());
-            verify(auditLogService).log(eq(AuditAction.SUCCESSFUL_EMAIL_VERIFICATION), eq(utilisateur), eq("127.0.0.1"));
+            verify(auditLogService).log(AuditAction.SUCCESSFUL_EMAIL_VERIFICATION, utilisateur, "127.0.0.1");
             verify(utilisateurRepository).save(utilisateur);
         }
     }

@@ -20,6 +20,8 @@ import java.util.Map;
 @RequestMapping("/auth")
 public class AuthController {
 
+    public static final String REFRESH_TOKEN = "refreshToken";
+    public static final String ACCESS_TOKEN = "accessToken";
     private final AuthenticationService authenticationService;
     private final VerificationEmailService verificationEmailService;
     private final PasswordResetService passwordResetService;
@@ -50,14 +52,14 @@ public class AuthController {
         );
 
         // 2. On récupère les tokens et on le met en cookie HttpOnly
-        String refreshToken = tokens.get("refreshToken");
+        String refreshToken = tokens.get(REFRESH_TOKEN);
         if (refreshToken != null) {
 
-            response.addCookie(createCookie("refreshToken", refreshToken, 7 * 24 * 60 * 60));
+            response.addCookie(createCookie(REFRESH_TOKEN, refreshToken, 7 * 24 * 60 * 60));
         }
 
-        String accessToken = tokens.get("accessToken");
-        response.addCookie(createCookie("accessToken", accessToken, 15 * 60));
+        String accessToken = tokens.get(ACCESS_TOKEN);
+        response.addCookie(createCookie(ACCESS_TOKEN, accessToken, 15 * 60));
 
         return ResponseEntity.ok().build();
     }
@@ -85,11 +87,11 @@ public class AuthController {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
-                if ("refreshToken".equals(cookie.getName())) {
+                if (REFRESH_TOKEN.equals(cookie.getName())) {
                     String refreshToken = cookie.getValue();
                     String newToken = authenticationService.refreshToken(refreshToken, request);
 
-                    response.addCookie(createCookie("accessToken", newToken, 15 * 60));
+                    response.addCookie(createCookie(ACCESS_TOKEN, newToken, 15 * 60));
 
                     return ResponseEntity.ok().build();
                 }

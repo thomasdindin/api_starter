@@ -23,12 +23,17 @@ import java.util.stream.Stream;
 @Service
 public class MonitoringService {
 
-    @Autowired
-    private AuditLogRepository auditLogRepository;
-    @Autowired
-    private UtilisateurRepository utilisateurRepository;
-    @Autowired
-    private BlacklistRepository blacklistRepository;
+    private final AuditLogRepository auditLogRepository;
+    private final UtilisateurRepository utilisateurRepository;
+    private final BlacklistRepository blacklistRepository;
+
+    public MonitoringService(@Autowired AuditLogRepository auditLogRepository,
+                             @Autowired UtilisateurRepository utilisateurRepository,
+                             @Autowired BlacklistRepository blacklistRepository) {
+        this.auditLogRepository = auditLogRepository;
+        this.utilisateurRepository = utilisateurRepository;
+        this.blacklistRepository = blacklistRepository;
+    }
 
     public MonitoringDto getMonitoringData() {
         LocalDate earliest = findEarliestDate();

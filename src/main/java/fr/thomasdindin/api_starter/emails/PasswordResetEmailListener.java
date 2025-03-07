@@ -9,9 +9,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PasswordResetEmailListener {
+    private final JavaMailSender mailSender;
 
-    @Autowired
-    private JavaMailSender mailSender;
+    public PasswordResetEmailListener(@Autowired JavaMailSender mailSender) {
+        this.mailSender = mailSender;
+    }
 
     @RabbitListener(queues = RabbitMQConfig.PASSWORD_RESET_QUEUE)
     public void processPasswordResetEmail(EmailMessage message) {
